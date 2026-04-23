@@ -22,11 +22,17 @@ pub enum EncodeError {
     #[error("K exceeds implementation limit: {got} > {max}")]
     KTooLarge { got: u16, max: usize },
 
+    #[error("K must be greater than zero")]
+    InvalidK { got: u16 },
+
     #[error("too many blocks for v1 implementation: {got} > {max}")]
     TooManyBlocks { got: usize, max: u32 },
 
     #[error("too many symbols for v1 implementation: {got} > {max}")]
     TooManySymbols { got: usize, max: u16 },
+
+    #[error("symbol payload exceeds selected profile capacity: {got} > {max}")]
+    SymbolPayloadTooLarge { got: usize, max: usize },
 }
 
 #[derive(Debug, Error)]
@@ -131,6 +137,19 @@ pub enum FileError {
 
     #[error("overlapping block range: symbol_index={symbol_index}, block_index={block_index}")]
     OverlappingBlockRange { symbol_index: u16, block_index: u32 },
+}
+
+#[derive(Debug, Error)]
+pub enum DecodeFileError {
+    #[error("symbol {symbol_index} failed to decode: {source}")]
+    Symbol {
+        symbol_index: usize,
+        #[source]
+        source: SymbolError,
+    },
+
+    #[error(transparent)]
+    Reassemble(#[from] FileError),
 }
 
 #[cfg(test)]

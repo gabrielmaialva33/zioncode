@@ -139,7 +139,7 @@ fn mixed_file_ids_rejected() {
     let raw = vec![0u8; 5000];
     let encoded_a = encode_file(&raw, 38, ZSTD_LEVEL_DEFAULT).unwrap();
     let encoded_b = encode_file(&raw, 38, ZSTD_LEVEL_DEFAULT).unwrap();
-    // UUIDv4 garante que encoded_a.file_id != encoded_b.file_id (com probabilidade ~1).
+    // UUIDv4 makes this mismatch effectively certain for this test.
 
     let mut reasm = FileReassembler::new();
     reasm

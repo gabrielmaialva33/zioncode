@@ -1,4 +1,4 @@
-//! Constantes trancadas pela v1. Ver spec Appendix A.
+//! Constants locked by v1. See spec Appendix A.
 
 pub const MAGIC: [u8; 4] = *b"ZION";
 pub const VERSION: u8 = 0x01;
@@ -23,7 +23,7 @@ pub const MAX_BLOCK_COUNT: u16 = 64;
 /// Implementation limit: a symbol may not exceed 1 MiB of transmitted bytes.
 pub const MAX_SYMBOL_BYTES: usize = 1 << 20;
 
-/// Derivado de `MAX_SYMBOL_BYTES` / `RS_N`.
+/// Derived from `MAX_SYMBOL_BYTES` / `RS_N`.
 pub const MAX_K: usize = MAX_SYMBOL_BYTES / RS_N; // 4112
 
 /// Implementation limit: maximum total blocks per file.

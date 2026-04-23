@@ -18,6 +18,15 @@ pub enum EncodeError {
 
     #[error("zstd encode failed at block {block_index}: {zstd_err}")]
     ZstdEncodeFailed { block_index: u32, zstd_err: String },
+
+    #[error("K exceeds implementation limit: {got} > {max}")]
+    KTooLarge { got: u16, max: usize },
+
+    #[error("too many blocks for v1 implementation: {got} > {max}")]
+    TooManyBlocks { got: usize, max: u32 },
+
+    #[error("too many symbols for v1 implementation: {got} > {max}")]
+    TooManySymbols { got: usize, max: u16 },
 }
 
 #[derive(Debug, Error)]
@@ -34,6 +43,9 @@ pub enum SymbolError {
     #[error("unsupported version: got={got}, max_supported={max_supported}")]
     UnsupportedVersion { got: u8, max_supported: u8 },
 
+    #[error("unsupported header flags: {flags:#x}")]
+    UnsupportedHeaderFlags { flags: u16 },
+
     #[error("invalid header_len: {got}")]
     HeaderLengthInvalid { got: u8 },
 
@@ -42,6 +54,9 @@ pub enum SymbolError {
 
     #[error("symbol exceeds maximum allowed size: {got} > {max}")]
     SymbolByteLengthTooLarge { got: usize, max: usize },
+
+    #[error("block range overflows u32: block_start={block_start}, block_count={block_count}")]
+    BlockRangeOverflow { block_start: u32, block_count: u16 },
 }
 
 #[derive(Debug, Error)]
@@ -93,7 +108,7 @@ pub enum FileError {
     SymbolIndexOutOfRange { got: u16, total: u16 },
 
     #[error(
-        "block range excede total_blocks: block_start={block_start}, count={block_count}, total={total_blocks}"
+        "block range exceeds total_blocks: block_start={block_start}, count={block_count}, total={total_blocks}"
     )]
     BlockRangeExceedsTotal {
         block_start: u32,
@@ -103,6 +118,9 @@ pub enum FileError {
 
     #[error("duplicate symbol {symbol_index} (divergent={divergent})")]
     DuplicateSymbol { symbol_index: u16, divergent: bool },
+
+    #[error("overlapping block range: symbol_index={symbol_index}, block_index={block_index}")]
+    OverlappingBlockRange { symbol_index: u16, block_index: u32 },
 }
 
 #[cfg(test)]

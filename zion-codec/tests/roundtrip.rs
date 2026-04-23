@@ -152,6 +152,29 @@ fn mixed_file_ids_rejected() {
     ));
 }
 
+#[test]
+fn overlapping_block_ranges_are_rejected() {
+    let raw = vec![0x42u8; 5000];
+    let encoded = encode_file(&raw, 38, ZSTD_LEVEL_DEFAULT).unwrap();
+
+    let mut first = decode_symbol(&encoded.symbols[0]).unwrap();
+    first.header.total_symbols = 2;
+
+    let mut overlapping = decode_symbol(&encoded.symbols[0]).unwrap();
+    overlapping.header.total_symbols = 2;
+    overlapping.header.symbol_index = 1;
+
+    let mut reasm = FileReassembler::new();
+    reasm.add_symbol(first).unwrap();
+    assert!(matches!(
+        reasm.add_symbol(overlapping),
+        Err(zion_codec::error::FileError::OverlappingBlockRange {
+            symbol_index: 1,
+            block_index: 0,
+        })
+    ));
+}
+
 fn build_symbol_with_raw_blocks(
     header: &zion_codec::format::SymbolHeader,
     block_bytes: &[Vec<u8>],

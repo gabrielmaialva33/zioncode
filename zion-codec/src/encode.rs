@@ -2,7 +2,8 @@
 //! See spec section 6.2.
 
 use crate::constants::{
-    BLOCK_HEADER_LEN, BLOCK_SIZE_RAW, HEADER_LEN_V1, RS_K, RS_N, TARGET_BLOCKS_PER_SYMBOL,
+    BLOCK_HEADER_LEN, BLOCK_SIZE_RAW, HEADER_LEN_V1, MAX_K, MAX_TOTAL_BLOCKS, MAX_TOTAL_SYMBOLS,
+    RS_K, RS_N, TARGET_BLOCKS_PER_SYMBOL,
 };
 use crate::ecc::{interleave_column_major, rs_encode_codeword};
 use crate::error::EncodeError;
@@ -164,12 +165,15 @@ pub fn encode_file(raw_file: &[u8], k: u16, zstd_level: i32) -> Result<EncodedFi
     if raw_file.is_empty() {
         return Err(EncodeError::EmptyInput);
     }
+    validate_k(k)?;
+    validate_raw_file_limits(raw_file.len())?;
 
     let file_id = *Uuid::new_v4().as_bytes();
     let global_hash: [u8; 32] = blake3::hash(raw_file).as_bytes().to_owned();
 
     let blocks = split_file_into_blocks(raw_file, zstd_level)?;
     let packings = pack_blocks_into_symbols(&blocks, k)?;
+    validate_symbol_count(packings.len())?;
 
     let total_blocks = u32::try_from(blocks.len()).expect("blocks.len() fits u32");
     let total_symbols = u16::try_from(packings.len()).expect("packings.len() fits u16");
@@ -206,6 +210,34 @@ pub fn encode_file(raw_file: &[u8], k: u16, zstd_level: i32) -> Result<EncodedFi
     })
 }
 
+fn validate_k(k: u16) -> Result<(), EncodeError> {
+    if usize::from(k) > MAX_K {
+        return Err(EncodeError::KTooLarge { got: k, max: MAX_K });
+    }
+    Ok(())
+}
+
+fn validate_raw_file_limits(raw_len: usize) -> Result<(), EncodeError> {
+    let total_blocks = raw_len.div_ceil(BLOCK_SIZE_RAW);
+    if total_blocks > MAX_TOTAL_BLOCKS as usize {
+        return Err(EncodeError::TooManyBlocks {
+            got: total_blocks,
+            max: MAX_TOTAL_BLOCKS,
+        });
+    }
+    Ok(())
+}
+
+fn validate_symbol_count(total_symbols: usize) -> Result<(), EncodeError> {
+    if total_symbols > usize::from(MAX_TOTAL_SYMBOLS) {
+        return Err(EncodeError::TooManySymbols {
+            got: total_symbols,
+            max: MAX_TOTAL_SYMBOLS,
+        });
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -234,6 +266,37 @@ mod tests {
         };
         let output = encode_single_symbol(&header, &[block], 10);
         assert_eq!(output.len(), 10 * 255);
+    }
+
+    #[test]
+    fn k_above_decoder_limit_is_rejected() {
+        let raw = [0x42u8; 1];
+        let too_large_k = u16::try_from(MAX_K + 1).unwrap();
+        assert!(matches!(
+            encode_file(&raw, too_large_k, crate::constants::ZSTD_LEVEL_DEFAULT),
+            Err(EncodeError::KTooLarge { got, max })
+                if got == too_large_k && max == MAX_K
+        ));
+    }
+
+    #[test]
+    fn too_many_blocks_is_rejected_before_allocation() {
+        let raw_len = (MAX_TOTAL_BLOCKS as usize * BLOCK_SIZE_RAW) + 1;
+        assert!(matches!(
+            validate_raw_file_limits(raw_len),
+            Err(EncodeError::TooManyBlocks { got, max })
+                if got == MAX_TOTAL_BLOCKS as usize + 1 && max == MAX_TOTAL_BLOCKS
+        ));
+    }
+
+    #[test]
+    fn too_many_symbols_is_rejected() {
+        let total_symbols = usize::from(MAX_TOTAL_SYMBOLS) + 1;
+        assert!(matches!(
+            validate_symbol_count(total_symbols),
+            Err(EncodeError::TooManySymbols { got, max })
+                if got == total_symbols && max == MAX_TOTAL_SYMBOLS
+        ));
     }
 }
 

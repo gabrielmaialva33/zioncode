@@ -91,6 +91,8 @@ impl FileReassembler {
             return self.merge_duplicate_symbol(hdr.symbol_index, *existing, normalized_blocks);
         }
 
+        self.ensure_no_overlapping_blocks(hdr.symbol_index, hdr.block_start, hdr.block_count)?;
+
         self.insert_symbol(
             hdr.symbol_index,
             StoredSymbol {
@@ -299,6 +301,24 @@ impl FileReassembler {
             let global_idx = stored_symbol.block_start + i as u32;
             self.blocks.insert(global_idx, stored);
         }
+    }
+
+    fn ensure_no_overlapping_blocks(
+        &self,
+        symbol_index: u16,
+        block_start: u32,
+        block_count: u16,
+    ) -> Result<(), FileError> {
+        for i in 0..block_count {
+            let block_index = block_start + u32::from(i);
+            if self.blocks.contains_key(&block_index) {
+                return Err(FileError::OverlappingBlockRange {
+                    symbol_index,
+                    block_index,
+                });
+            }
+        }
+        Ok(())
     }
 }
 

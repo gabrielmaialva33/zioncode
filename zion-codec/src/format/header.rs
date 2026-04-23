@@ -79,7 +79,7 @@ impl SymbolHeader {
         }
 
         let version = bytes[4];
-        if version > VERSION {
+        if version != VERSION {
             return Err(SymbolError::UnsupportedVersion {
                 got: version,
                 max_supported: VERSION,
@@ -103,6 +103,9 @@ impl SymbolHeader {
         }
 
         let flags = u16::from_le_bytes(bytes[6..8].try_into().unwrap());
+        if flags != 0 {
+            return Err(SymbolError::UnsupportedHeaderFlags { flags });
+        }
         let file_id: [u8; 16] = bytes[8..24].try_into().unwrap();
         let file_size = u64::from_le_bytes(bytes[24..32].try_into().unwrap());
         let total_blocks = u32::from_le_bytes(bytes[32..36].try_into().unwrap());
@@ -195,19 +198,28 @@ mod tests {
         ));
     }
 
-    /// Documents the current policy: `version < VERSION` (here v=0) is accepted.
-    /// If the spec changes to require `version == VERSION`, this test should fail.
     #[test]
-    fn version_zero_is_currently_accepted() {
+    fn version_zero_is_rejected() {
         let mut bytes = sample_header().serialize_v1();
         bytes[4] = 0x00;
         let crc = crc32c(&bytes[0..78]);
         bytes[78..82].copy_from_slice(&crc.to_le_bytes());
-        let result = SymbolHeader::parse(&bytes);
-        assert!(
-            result.is_ok(),
-            "version=0 should pass while the spec only rejects version > VERSION"
-        );
+        assert!(matches!(
+            SymbolHeader::parse(&bytes),
+            Err(SymbolError::UnsupportedVersion { got: 0, .. })
+        ));
+    }
+
+    #[test]
+    fn nonzero_header_flags_are_rejected() {
+        let mut bytes = sample_header().serialize_v1();
+        bytes[6..8].copy_from_slice(&1u16.to_le_bytes());
+        let crc = crc32c(&bytes[0..78]);
+        bytes[78..82].copy_from_slice(&crc.to_le_bytes());
+        assert!(matches!(
+            SymbolHeader::parse(&bytes),
+            Err(SymbolError::UnsupportedHeaderFlags { flags: 1 })
+        ));
     }
 
     #[test]

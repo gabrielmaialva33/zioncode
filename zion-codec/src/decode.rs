@@ -47,6 +47,16 @@ pub fn decode_symbol(symbol_bytes: &[u8]) -> Result<DecodedSymbol, SymbolError> 
     }
 
     let (header, header_bytes_consumed) = SymbolHeader::parse(&pre_ecc)?;
+    if header
+        .block_start
+        .checked_add(u32::from(header.block_count))
+        .is_none()
+    {
+        return Err(SymbolError::BlockRangeOverflow {
+            block_start: header.block_start,
+            block_count: header.block_count,
+        });
+    }
 
     let mut offset = header_bytes_consumed;
     let mut blocks: Vec<Result<BlockEntry, BlockError>> =
@@ -137,6 +147,35 @@ mod tests {
         assert!(matches!(
             decode_symbol(&bytes),
             Err(SymbolError::SymbolByteLengthTooLarge { .. })
+        ));
+    }
+
+    #[test]
+    fn overflowing_block_range_is_rejected_without_panic() {
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "HEADER_LEN_V1 = 82 fits u8"
+        )]
+        let header = SymbolHeader {
+            header_len: HEADER_LEN_V1 as u8,
+            flags: 0,
+            file_id: [0xAA; 16],
+            file_size: 1,
+            total_blocks: u32::MAX,
+            total_symbols: 1,
+            symbol_index: 0,
+            block_start: u32::MAX,
+            block_count: 1,
+            global_hash: [0xBB; 32],
+        };
+
+        let symbol_bytes = encode_single_symbol(&header, &[], 1);
+        assert!(matches!(
+            decode_symbol(&symbol_bytes),
+            Err(SymbolError::BlockRangeOverflow {
+                block_start: u32::MAX,
+                block_count: 1,
+            })
         ));
     }
 }

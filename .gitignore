@@ -25,3 +25,7 @@ fuzz/corpus/
 .codex
 .claude
 docs/superpowers
+
+# Mixed
+*.log
+tmp

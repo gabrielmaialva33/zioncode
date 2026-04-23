@@ -37,6 +37,16 @@ pub enum SymbolError {
     #[error("RS decode failed for codeword {codeword_index}")]
     RsDecodeFailed { codeword_index: u16 },
 
+    #[error("too many RS erasures for codeword {codeword_index}: {got} > parity budget {max}")]
+    TooManyErasures {
+        codeword_index: u16,
+        got: usize,
+        max: usize,
+    },
+
+    #[error("erasure position {position} is outside symbol length {symbol_len}")]
+    ErasurePositionOutOfRange { position: usize, symbol_len: usize },
+
     #[error("invalid magic: {got:?}")]
     BadMagic { got: [u8; 4] },
 

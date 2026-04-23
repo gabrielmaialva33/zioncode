@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 6afb02e6a7f590db7da8c37b2a9201b37329e95ed87dac27f87a1e228995a08d # shrinks to bytes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 57, 138, 224, 38, 58, 137, 41, 37, 62, 105, 112, 140, 60, 217, 235, 2, 22, 178, 232, 103, 21, 136, 92, 168, 74, 110, 36, 94, 201, 124, 40, 88, 249, 192, 37, 186, 173, 12, 102, 50, 73, 71, 166, 4, 62, 211, 18, 116, 53, 198, 29, 206, 252, 58, 234, 11, 89, 57, 36, 62, 165, 125, 32, 82, 248, 6, 126, 112, 228, 239, 89, 99, 206, 6, 99, 40, 73, 14, 168, 75, 234, 130, 178, 124], k_offset = 8, corruption_seed = 7619

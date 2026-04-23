@@ -15,6 +15,15 @@ struct StoredSymbol {
     block_count: u16,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ReassemblyMetadata {
+    file_id: [u8; 16],
+    file_size: u64,
+    total_blocks: u32,
+    total_symbols: u16,
+    global_hash: [u8; 32],
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HashStatus {
     Verified,
@@ -33,11 +42,7 @@ pub struct FinalizedFile {
 /// collected from the optical layer, then `finalize()` returns the file bytes.
 #[derive(Debug, Default)]
 pub struct FileReassembler {
-    file_id: Option<[u8; 16]>,
-    file_size: Option<u64>,
-    total_blocks: Option<u32>,
-    total_symbols: Option<u16>,
-    global_hash: Option<[u8; 32]>,
+    metadata: Option<ReassemblyMetadata>,
     /// `block_index` -> `BlockEntry` (or `None` if lost due to a block error)
     blocks: BTreeMap<u32, Option<BlockEntry>>,
     symbols: BTreeMap<u16, StoredSymbol>,
@@ -52,7 +57,7 @@ impl FileReassembler {
     /// Add a decoded symbol to the reassembly state.
     ///
     /// # Errors
-    /// - `SymbolIndexOutOfRange` se `symbol_index >= total_symbols`.
+    /// - `SymbolIndexOutOfRange` if `symbol_index >= total_symbols`.
     /// - `BlockRangeExceedsTotal` if the block range exceeds `total_blocks`.
     /// - `SymbolFileIdMismatch` if the symbol belongs to another file.
     /// - `InconsistentFileMetadata` if any aggregated field diverges.
@@ -111,10 +116,6 @@ impl FileReassembler {
     /// - `GlobalHashMismatch` if the rebuilt file's BLAKE3-256 hash does not
     ///   match the hash recorded in the headers.
     ///
-    /// # Panics
-    /// Panics only on internal bugs: `file_size` and `global_hash` are always
-    /// populated together with `total_blocks`, and indices in `0..total_blocks`
-    /// are present in the map as `Some(_)` after the missing-block check.
     pub fn finalize(self) -> Result<Vec<u8>, FileError> {
         let finalized = self.finalize_report()?;
         match finalized.hash_status {
@@ -130,25 +131,14 @@ impl FileReassembler {
     ///
     /// # Errors
     /// - `MissingBlocks` if any block was not collected or was lost.
-    ///
-    /// # Panics
-    /// Panics only on internal bugs: `file_size` and `global_hash` are always
-    /// populated together with `total_blocks`, and indices in `0..total_blocks`
-    /// are present in the map as `Some(_)` after the missing-block check.
     pub fn finalize_report(self) -> Result<FinalizedFile, FileError> {
-        let total_blocks = self.total_blocks.ok_or(FileError::MissingBlocks {
+        let metadata = self.metadata.ok_or(FileError::MissingBlocks {
             ranges: vec![(0, 0)],
         })?;
-        let file_size = self
-            .file_size
-            .expect("file_size set alongside total_blocks");
-        let global_hash = self
-            .global_hash
-            .expect("global_hash set alongside total_blocks");
 
         let mut missing: Vec<(u32, u32)> = Vec::new();
         let mut current_range: Option<(u32, u32)> = None;
-        for idx in 0..total_blocks {
+        for idx in 0..metadata.total_blocks {
             let missing_this = !matches!(self.blocks.get(&idx), Some(Some(_)));
             if missing_this {
                 current_range = Some(match current_range {
@@ -170,10 +160,17 @@ impl FileReassembler {
             return Err(FileError::MissingBlocks { ranges: missing });
         }
 
-        let mut out = Vec::with_capacity(usize::try_from(file_size).unwrap_or(usize::MAX));
-        for idx in 0..total_blocks {
-            let entry = self.blocks.get(&idx).unwrap().as_ref().unwrap();
-            let expected_raw_size = expected_block_size(file_size, total_blocks, idx);
+        let mut out = Vec::with_capacity(usize::try_from(metadata.file_size).unwrap_or(usize::MAX));
+        for idx in 0..metadata.total_blocks {
+            let entry =
+                self.blocks
+                    .get(&idx)
+                    .and_then(Option::as_ref)
+                    .ok_or(FileError::MissingBlocks {
+                        ranges: vec![(idx, idx)],
+                    })?;
+            let expected_raw_size =
+                expected_block_size(metadata.file_size, metadata.total_blocks, idx);
             let raw = decode_block(entry, idx, expected_raw_size).map_err(|_| {
                 FileError::MissingBlocks {
                     ranges: vec![(idx, idx)],
@@ -182,14 +179,14 @@ impl FileReassembler {
             out.extend_from_slice(&raw);
         }
 
-        out.truncate(usize::try_from(file_size).unwrap_or(usize::MAX));
+        out.truncate(usize::try_from(metadata.file_size).unwrap_or(usize::MAX));
 
         let actual_hash: [u8; 32] = *blake3::hash(&out).as_bytes();
-        let hash_status = if actual_hash == global_hash {
+        let hash_status = if actual_hash == metadata.global_hash {
             HashStatus::Verified
         } else {
             HashStatus::Mismatch {
-                expected: global_hash,
+                expected: metadata.global_hash,
                 got: actual_hash,
             }
         };
@@ -204,35 +201,37 @@ impl FileReassembler {
         &mut self,
         header: &crate::format::SymbolHeader,
     ) -> Result<(), FileError> {
-        match self.file_id {
+        match self.metadata {
             None => {
-                self.file_id = Some(header.file_id);
-                self.file_size = Some(header.file_size);
-                self.total_blocks = Some(header.total_blocks);
-                self.total_symbols = Some(header.total_symbols);
-                self.global_hash = Some(header.global_hash);
+                self.metadata = Some(ReassemblyMetadata {
+                    file_id: header.file_id,
+                    file_size: header.file_size,
+                    total_blocks: header.total_blocks,
+                    total_symbols: header.total_symbols,
+                    global_hash: header.global_hash,
+                });
             }
             Some(existing) => {
-                if existing != header.file_id {
+                if existing.file_id != header.file_id {
                     return Err(FileError::SymbolFileIdMismatch {
-                        expected: existing,
+                        expected: existing.file_id,
                         got: header.file_id,
                     });
                 }
-                if self.file_size != Some(header.file_size) {
+                if existing.file_size != header.file_size {
                     return Err(FileError::InconsistentFileMetadata { field: "file_size" });
                 }
-                if self.total_blocks != Some(header.total_blocks) {
+                if existing.total_blocks != header.total_blocks {
                     return Err(FileError::InconsistentFileMetadata {
                         field: "total_blocks",
                     });
                 }
-                if self.total_symbols != Some(header.total_symbols) {
+                if existing.total_symbols != header.total_symbols {
                     return Err(FileError::InconsistentFileMetadata {
                         field: "total_symbols",
                     });
                 }
-                if self.global_hash != Some(header.global_hash) {
+                if existing.global_hash != header.global_hash {
                     return Err(FileError::InconsistentFileMetadata {
                         field: "global_hash",
                     });
@@ -380,9 +379,13 @@ fn expected_total_blocks(file_size: u64) -> u32 {
 
 fn expected_block_size(file_size: u64, total_blocks: u32, block_index: u32) -> u16 {
     if block_index + 1 < total_blocks {
-        return u16::try_from(BLOCK_SIZE_RAW).expect("BLOCK_SIZE_RAW fits u16");
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "BLOCK_SIZE_RAW is 8192 and fits u16"
+        )]
+        return BLOCK_SIZE_RAW as u16;
     }
 
     let full_prefix = u64::from(total_blocks.saturating_sub(1)) * BLOCK_SIZE_RAW as u64;
-    u16::try_from(file_size - full_prefix).expect("last block size is always <= 8192")
+    u16::try_from(file_size.saturating_sub(full_prefix)).unwrap_or(u16::MAX)
 }

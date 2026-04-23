@@ -5,12 +5,12 @@ mod blocks;
 mod packing;
 
 pub use blocks::split_file_into_blocks;
-pub use packing::{pack_blocks_into_symbols, pack_blocks_into_symbols_with_profile, SymbolPacking};
+pub use packing::{SymbolPacking, pack_blocks_into_symbols, pack_blocks_into_symbols_with_profile};
 
 use crate::constants::{
     BLOCK_SIZE_RAW, HEADER_LEN_V1, MAX_K, MAX_TOTAL_BLOCKS, MAX_TOTAL_SYMBOLS, RS_N,
 };
-use crate::ecc::{interleave_column_major, rs_encode_codeword_with_profile, EccProfile};
+use crate::ecc::{EccProfile, interleave_column_major, try_rs_encode_codeword_with_profile};
 use crate::error::EncodeError;
 use crate::format::{BlockEntry, SymbolHeader};
 use crate::types::{FileId, GlobalHash, SymbolBytes};
@@ -91,7 +91,7 @@ pub fn try_encode_single_symbol_with_profile(
 
     let mut codewords: Vec<[u8; RS_N]> = Vec::with_capacity(k);
     for chunk in pre_ecc.chunks_exact(data_len) {
-        codewords.push(rs_encode_codeword_with_profile(chunk, profile));
+        codewords.push(try_rs_encode_codeword_with_profile(chunk, profile)?);
     }
 
     Ok(SymbolBytes::from_vec(interleave_column_major(&codewords)))

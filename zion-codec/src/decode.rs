@@ -2,7 +2,7 @@
 
 use crate::constants::{BLOCK_HEADER_LEN, MAX_SYMBOL_BYTES, RS_N};
 use crate::ecc::{
-    EccProfile, deinterleave_column_major, rs_decode_codeword_with_profile_and_erasures,
+    EccProfile, rs_decode_codeword_with_profile_and_erasures, try_deinterleave_column_major,
 };
 use crate::error::{BlockError, SymbolError};
 use crate::format::{BlockEntry, SymbolHeader};
@@ -120,7 +120,7 @@ fn decode_symbol_with_profile(
     profile: EccProfile,
     erasures_by_codeword: Option<&[Vec<u8>]>,
 ) -> Result<Option<DecodedSymbol>, SymbolError> {
-    let codewords = deinterleave_column_major(symbol_bytes, k);
+    let codewords = try_deinterleave_column_major(symbol_bytes, k)?;
     let mut pre_ecc = Vec::with_capacity(k * profile.data_len());
     for (j, cw) in codewords.iter().enumerate() {
         let erasures = erasures_by_codeword

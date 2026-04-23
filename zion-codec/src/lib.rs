@@ -14,7 +14,7 @@ pub use ecc::EccProfile;
 pub use encode::EncodedFile;
 pub use error::{BlockError, DecodeFileError, EncodeError, FileError, SymbolError};
 pub use reassemble::{FileReassembler, FinalizedFile, HashStatus};
-pub use types::{FileId, GlobalHash, SymbolBytes};
+pub use types::{FileId, GlobalHash, SymbolBytes, SymbolWidth};
 
 #[doc(hidden)]
 pub mod constants;

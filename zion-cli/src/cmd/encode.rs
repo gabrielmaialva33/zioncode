@@ -42,7 +42,7 @@ pub struct Args {
     pub profile: ProfileArg,
 
     /// zstd compression level (1-22).
-    #[arg(long, default_value_t = EncoderConfig::default().zstd_level)]
+    #[arg(long, default_value_t = EncoderConfig::DEFAULT_ZSTD_LEVEL)]
     pub zstd_level: i32,
 }
 
@@ -52,11 +52,12 @@ pub struct Args {
 /// Propagates I/O or encoding errors.
 pub fn run(args: Args) -> Result<()> {
     let raw = fs::read(&args.input).with_context(|| format!("reading {}", args.input.display()))?;
-    let config = EncoderConfig {
-        k: args.k,
-        zstd_level: args.zstd_level,
-        ecc_profile: EccProfile::from(args.profile),
-    };
+    let mut config = EncoderConfig::auto()
+        .with_zstd_level(args.zstd_level)
+        .with_profile(EccProfile::from(args.profile));
+    if let Some(k) = args.k {
+        config = config.try_with_k(k)?;
+    }
     let encoded = Encoder::new(config).encode(&raw).context("encode_file")?;
 
     let prefix_file_name = args

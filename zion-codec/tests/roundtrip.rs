@@ -4,7 +4,9 @@ use zion_codec::reassemble::FileReassembler;
 use zion_codec::{Decoder, Encoder, EncoderConfig};
 
 fn encode_decode_roundtrip(raw: &[u8], k: u16) {
-    let encoded = Encoder::new(EncoderConfig::fixed_k(k)).encode(raw).unwrap();
+    let encoded = Encoder::new(EncoderConfig::fixed_k(k).unwrap())
+        .encode(raw)
+        .unwrap();
     let recovered = Decoder::default().decode_file(&encoded.symbols).unwrap();
     assert_eq!(recovered, raw);
 }
@@ -39,7 +41,7 @@ fn roundtrip_boundary_sizes() {
 #[test]
 fn missing_symbol_reports_block_range() {
     let raw = vec![0u8; 40_000];
-    let encoded = Encoder::new(EncoderConfig::fixed_k(148))
+    let encoded = Encoder::new(EncoderConfig::fixed_k(148).unwrap())
         .encode(&raw)
         .unwrap();
     assert!(encoded.symbols.len() >= 2);
@@ -60,7 +62,7 @@ fn missing_symbol_reports_block_range() {
 #[test]
 fn out_of_order_symbols_work() {
     let raw = vec![0u8; 40_000];
-    let encoded = Encoder::new(EncoderConfig::fixed_k(148))
+    let encoded = Encoder::new(EncoderConfig::fixed_k(148).unwrap())
         .encode(&raw)
         .unwrap();
 
@@ -77,7 +79,7 @@ fn out_of_order_symbols_work() {
 #[test]
 fn duplicate_symbol_idempotent() {
     let raw = vec![0u8; 5000];
-    let encoded = Encoder::new(EncoderConfig::fixed_k(38))
+    let encoded = Encoder::new(EncoderConfig::fixed_k(38).unwrap())
         .encode(&raw)
         .unwrap();
     assert_eq!(encoded.symbols.len(), 1);
@@ -98,7 +100,7 @@ fn duplicate_symbol_idempotent() {
 #[test]
 fn recaptured_symbol_can_fill_missing_blocks() {
     let raw = vec![0x5Au8; 5000];
-    let encoded = Encoder::new(EncoderConfig::fixed_k(38))
+    let encoded = Encoder::new(EncoderConfig::fixed_k(38).unwrap())
         .encode(&raw)
         .unwrap();
     assert_eq!(encoded.symbols.len(), 1);
@@ -124,7 +126,7 @@ fn recaptured_symbol_can_fill_missing_blocks() {
 #[test]
 fn invalid_zero_length_file_metadata_is_rejected() {
     let raw = vec![0x33u8; 100];
-    let encoded = Encoder::new(EncoderConfig::fixed_k(38))
+    let encoded = Encoder::new(EncoderConfig::fixed_k(38).unwrap())
         .encode(&raw)
         .unwrap();
     let mut decoded = decode_symbol(&encoded.symbols[0]).unwrap();
@@ -141,7 +143,7 @@ fn invalid_zero_length_file_metadata_is_rejected() {
 #[test]
 fn mixed_file_ids_rejected() {
     let raw = vec![0u8; 5000];
-    let encoder = Encoder::new(EncoderConfig::fixed_k(38));
+    let encoder = Encoder::new(EncoderConfig::fixed_k(38).unwrap());
     let encoded_a = encoder.encode(&raw).unwrap();
     let encoded_b = encoder.encode(&raw).unwrap();
     // UUIDv4 makes this mismatch effectively certain for this test.
@@ -160,7 +162,7 @@ fn mixed_file_ids_rejected() {
 #[test]
 fn overlapping_block_ranges_are_rejected() {
     let raw = vec![0x42u8; 5000];
-    let encoded = Encoder::new(EncoderConfig::fixed_k(38))
+    let encoded = Encoder::new(EncoderConfig::fixed_k(38).unwrap())
         .encode(&raw)
         .unwrap();
 

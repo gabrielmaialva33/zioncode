@@ -6,33 +6,35 @@ use crate::ecc::EccProfile;
 use crate::encode::{EncodedFile, encode_file_auto_k, encode_file_with_profile};
 use crate::error::{DecodeFileError, EncodeError, SymbolError};
 use crate::reassemble::FileReassembler;
+use crate::types::SymbolWidth;
 
 /// Encoder configuration for the full file-to-symbol pipeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EncoderConfig {
     /// `None` lets the encoder choose the smallest transmitted output.
-    pub k: Option<u16>,
-    pub zstd_level: i32,
-    pub ecc_profile: EccProfile,
+    k: Option<SymbolWidth>,
+    zstd_level: i32,
+    ecc_profile: EccProfile,
 }
 
 impl EncoderConfig {
+    pub const DEFAULT_ZSTD_LEVEL: i32 = ZSTD_LEVEL_DEFAULT;
+
     #[must_use]
     pub const fn auto() -> Self {
         Self {
             k: None,
-            zstd_level: ZSTD_LEVEL_DEFAULT,
+            zstd_level: Self::DEFAULT_ZSTD_LEVEL,
             ecc_profile: EccProfile::Safe,
         }
     }
 
-    #[must_use]
-    pub const fn fixed_k(k: u16) -> Self {
-        Self {
-            k: Some(k),
-            zstd_level: ZSTD_LEVEL_DEFAULT,
-            ecc_profile: EccProfile::Safe,
-        }
+    /// Build a fixed-width encoder config.
+    ///
+    /// # Errors
+    /// Returns `EncodeError` if `k` is zero or above the implementation limit.
+    pub fn fixed_k(k: u16) -> Result<Self, EncodeError> {
+        Ok(Self::auto().with_symbol_width(SymbolWidth::new(k)?))
     }
 
     #[must_use]
@@ -45,6 +47,35 @@ impl EncoderConfig {
     pub const fn with_zstd_level(mut self, zstd_level: i32) -> Self {
         self.zstd_level = zstd_level;
         self
+    }
+
+    #[must_use]
+    pub const fn with_symbol_width(mut self, width: SymbolWidth) -> Self {
+        self.k = Some(width);
+        self
+    }
+
+    /// Set a fixed symbol width from a raw `K`.
+    ///
+    /// # Errors
+    /// Returns `EncodeError` if `k` is zero or above the implementation limit.
+    pub fn try_with_k(self, k: u16) -> Result<Self, EncodeError> {
+        Ok(self.with_symbol_width(SymbolWidth::new(k)?))
+    }
+
+    #[must_use]
+    pub const fn symbol_width(self) -> Option<SymbolWidth> {
+        self.k
+    }
+
+    #[must_use]
+    pub const fn zstd_level(self) -> i32 {
+        self.zstd_level
+    }
+
+    #[must_use]
+    pub const fn ecc_profile(self) -> EccProfile {
+        self.ecc_profile
     }
 }
 
@@ -80,7 +111,7 @@ impl Encoder {
         match self.config.k {
             Some(k) => encode_file_with_profile(
                 raw_file,
-                k,
+                k.get(),
                 self.config.zstd_level,
                 self.config.ecc_profile,
             ),
@@ -217,7 +248,7 @@ mod tests {
     fn high_level_roundtrip_uses_only_facade_types() {
         let raw = b"architectural boundary test".repeat(64);
 
-        let encoded = Encoder::new(EncoderConfig::fixed_k(38))
+        let encoded = Encoder::new(EncoderConfig::fixed_k(38).unwrap())
             .encode(&raw)
             .unwrap();
         let recovered = Decoder::default().decode_file(&encoded.symbols).unwrap();
@@ -228,7 +259,7 @@ mod tests {
     #[test]
     fn capture_api_recovers_known_erasures() {
         let raw = b"erasure-aware public decoder".repeat(32);
-        let encoded = Encoder::new(EncoderConfig::fixed_k(38))
+        let encoded = Encoder::new(EncoderConfig::fixed_k(38).unwrap())
             .encode(&raw)
             .unwrap();
         let mut symbol = encoded.symbols[0].clone();

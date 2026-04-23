@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use zion_codec::{Decoder, Encoder, EncoderConfig};
 
 fn text_corpus() -> Vec<u8> {
@@ -18,7 +18,7 @@ fn bench_encode(c: &mut Criterion) {
     let rand = random_corpus();
 
     let mut group = c.benchmark_group("encode");
-    let encoder = Encoder::new(EncoderConfig::fixed_k(148));
+    let encoder = Encoder::new(EncoderConfig::fixed_k(148).unwrap());
     group.throughput(Throughput::Bytes(text.len() as u64));
     group.bench_function("text_100k", |b| {
         b.iter(|| encoder.encode(&text).unwrap());
@@ -32,7 +32,7 @@ fn bench_encode(c: &mut Criterion) {
 
 fn bench_decode(c: &mut Criterion) {
     let text = text_corpus();
-    let encoded = Encoder::new(EncoderConfig::fixed_k(148))
+    let encoded = Encoder::new(EncoderConfig::fixed_k(148).unwrap())
         .encode(&text)
         .unwrap();
     let decoder = Decoder::default();

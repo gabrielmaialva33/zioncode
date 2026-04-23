@@ -25,7 +25,7 @@ proptest! {
         k_offset in 0u16..50,
     ) {
         let k = min_k_for_bytes(bytes.len()).saturating_add(k_offset);
-        let encoded = Encoder::new(EncoderConfig::fixed_k(k)).encode(&bytes).unwrap();
+        let encoded = Encoder::new(EncoderConfig::fixed_k(k).unwrap()).encode(&bytes).unwrap();
         let recovered = Decoder::default().decode_file(&encoded.symbols).unwrap();
         prop_assert_eq!(recovered, bytes);
     }
@@ -37,7 +37,7 @@ proptest! {
         k_offset in 0u16..20,
     ) {
         let k = min_k_for_bytes(bytes.len()).saturating_add(k_offset);
-        let encoded = Encoder::new(EncoderConfig::fixed_k(k)).encode(&bytes).unwrap();
+        let encoded = Encoder::new(EncoderConfig::fixed_k(k).unwrap()).encode(&bytes).unwrap();
         for sym in &encoded.symbols {
             prop_assert_eq!(sym.len() % 255, 0);
             prop_assert_eq!(sym.len(), usize::from(k) * 255);
@@ -58,7 +58,7 @@ proptest! {
         corruption_seed in 1u64..10_000,
     ) {
         let k = min_k_for_bytes(bytes.len()).saturating_add(k_offset);
-        let encoded = Encoder::new(EncoderConfig::fixed_k(k)).encode(&bytes).unwrap();
+        let encoded = Encoder::new(EncoderConfig::fixed_k(k).unwrap()).encode(&bytes).unwrap();
         let mut sym = encoded.symbols[0].clone();
         let k_usize = usize::from(k);
 

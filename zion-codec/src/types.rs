@@ -1,7 +1,35 @@
 //! Domain types used by the public codec API.
 
+use crate::constants::MAX_K;
+use crate::error::EncodeError;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
+
+/// Number of Reed-Solomon codewords carried by one symbol.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SymbolWidth(u16);
+
+impl SymbolWidth {
+    /// Validate and create a symbol width.
+    ///
+    /// # Errors
+    /// Returns `EncodeError::InvalidK` for zero or `EncodeError::KTooLarge`
+    /// above the implementation limit.
+    pub fn new(k: u16) -> Result<Self, EncodeError> {
+        if k == 0 {
+            return Err(EncodeError::InvalidK { got: k });
+        }
+        if usize::from(k) > MAX_K {
+            return Err(EncodeError::KTooLarge { got: k, max: MAX_K });
+        }
+        Ok(Self(k))
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u16 {
+        self.0
+    }
+}
 
 /// Opaque file identity stored in every symbol header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -101,5 +129,29 @@ impl Deref for SymbolBytes {
 impl DerefMut for SymbolBytes {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::constants::MAX_K;
+
+    #[test]
+    fn symbol_width_rejects_zero() {
+        assert!(matches!(
+            SymbolWidth::new(0),
+            Err(EncodeError::InvalidK { got: 0 })
+        ));
+    }
+
+    #[test]
+    fn symbol_width_rejects_values_above_limit() {
+        let too_large = u16::try_from(MAX_K + 1).unwrap();
+
+        assert!(matches!(
+            SymbolWidth::new(too_large),
+            Err(EncodeError::KTooLarge { got, max }) if got == too_large && max == MAX_K
+        ));
     }
 }

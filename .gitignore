@@ -1,0 +1,27 @@
+# Rust
+target/
+**/*.rs.bk
+# Cargo.lock commitado (workspace com binário zion-cli)
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Fuzz artifacts
+fuzz/target/
+fuzz/artifacts/
+fuzz/corpus/
+
+# Local test output
+/tmp/
+*.zbin.tmp
+
+# AI artifacts
+.codex
+.claude
+docs/superpowers

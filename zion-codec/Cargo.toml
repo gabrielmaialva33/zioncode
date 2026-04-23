@@ -16,7 +16,7 @@ thiserror.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 hex-literal.workspace = true
-rand = "0.9"
+rand = "0.10.1"
 criterion.workspace = true
 
 [[bench]]

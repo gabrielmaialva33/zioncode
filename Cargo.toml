@@ -7,7 +7,7 @@ resolver = "3"
 version = "0.0.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/gabrielmaia/zioncode"
+repository = "https://github.com/gabrielmaialva33/zioncode"
 
 [workspace.dependencies]
 zstd = "0.13"

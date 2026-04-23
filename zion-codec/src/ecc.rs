@@ -109,7 +109,32 @@ pub fn rs_decode_codeword(
     code: &[u8; RS_N],
     codeword_index: u16,
 ) -> Result<[u8; RS_K], SymbolError> {
-    let data = rs_decode_codeword_with_profile(code, EccProfile::Safe, codeword_index)?;
+    let data =
+        rs_decode_codeword_with_profile_and_erasures(code, EccProfile::Safe, &[], codeword_index)?;
+    let mut out = [0u8; RS_K];
+    out.copy_from_slice(&data);
+    Ok(out)
+}
+
+/// Decode 255 bytes back into the original 223 data bytes with known erasures.
+///
+/// Erasure positions are byte offsets inside the 255-byte codeword. A known
+/// erasure costs one parity byte, while an unknown error costs two.
+///
+/// # Errors
+/// Returns `SymbolError::TooManyErasures` if erasures exceed the parity budget,
+/// or `SymbolError::RsDecodeFailed` if remaining damage is not recoverable.
+pub fn rs_decode_codeword_with_erasures(
+    code: &[u8; RS_N],
+    erasures: &[u8],
+    codeword_index: u16,
+) -> Result<[u8; RS_K], SymbolError> {
+    let data = rs_decode_codeword_with_profile_and_erasures(
+        code,
+        EccProfile::Safe,
+        erasures,
+        codeword_index,
+    )?;
     let mut out = [0u8; RS_K];
     out.copy_from_slice(&data);
     Ok(out)
@@ -124,14 +149,50 @@ pub fn rs_decode_codeword_with_profile(
     profile: EccProfile,
     codeword_index: u16,
 ) -> Result<Vec<u8>, SymbolError> {
+    rs_decode_codeword_with_profile_and_erasures(code, profile, &[], codeword_index)
+}
+
+/// Decode one codeword using the selected profile and known erasures.
+///
+/// # Errors
+/// Returns `SymbolError::TooManyErasures` if erasures exceed the selected
+/// profile's parity budget, or `SymbolError::RsDecodeFailed` if RS cannot
+/// correct the codeword.
+pub fn rs_decode_codeword_with_profile_and_erasures(
+    code: &[u8; RS_N],
+    profile: EccProfile,
+    erasures: &[u8],
+    codeword_index: u16,
+) -> Result<Vec<u8>, SymbolError> {
+    let erasures = normalized_erasures(erasures);
+    if erasures.len() > profile.parity_len() {
+        return Err(SymbolError::TooManyErasures {
+            codeword_index,
+            got: erasures.len(),
+            max: profile.parity_len(),
+        });
+    }
+
     let decoder = Decoder::new(profile.parity_len());
+    let erase_pos = if erasures.is_empty() {
+        None
+    } else {
+        Some(erasures.as_slice())
+    };
     let buffer = decoder
-        .correct(code, None)
+        .correct(code, erase_pos)
         .map_err(|_| SymbolError::RsDecodeFailed { codeword_index })?;
 
     let data = buffer.data();
     debug_assert_eq!(data.len(), profile.data_len());
     Ok(data.to_vec())
+}
+
+fn normalized_erasures(erasures: &[u8]) -> Vec<u8> {
+    let mut normalized = erasures.to_vec();
+    normalized.sort_unstable();
+    normalized.dedup();
+    normalized
 }
 
 /// Column-major interleave: given K codewords of `RS_N` bytes each, produce a
@@ -228,6 +289,50 @@ mod decode_tests {
             code[i * 10] ^= 0xFF;
         }
         let recovered = rs_decode_codeword(&code, 0).unwrap();
+        assert_eq!(recovered, data);
+    }
+
+    #[test]
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "test index is always < 256 and fits in u8"
+    )]
+    fn rs_tolerates_up_to_32_known_erasures() {
+        let data: [u8; RS_K] = std::array::from_fn(|i| i as u8);
+        let mut code = rs_encode_codeword(&data);
+        let erasures: Vec<u8> = (0u8..32).collect();
+
+        for &position in &erasures {
+            code[usize::from(position)] ^= 0xA5;
+        }
+
+        let recovered = rs_decode_codeword_with_erasures(&code, &erasures, 0).unwrap();
+        assert_eq!(recovered, data);
+    }
+
+    #[test]
+    fn rs_rejects_erasures_above_parity_budget() {
+        let data = [0u8; RS_K];
+        let code = rs_encode_codeword(&data);
+        let erasures: Vec<u8> = (0u8..33).collect();
+
+        assert!(matches!(
+            rs_decode_codeword_with_erasures(&code, &erasures, 7),
+            Err(SymbolError::TooManyErasures {
+                codeword_index: 7,
+                got: 33,
+                max: 32,
+            })
+        ));
+    }
+
+    #[test]
+    fn duplicate_erasures_do_not_consume_extra_budget() {
+        let data = [0x11u8; RS_K];
+        let mut code = rs_encode_codeword(&data);
+        code[4] ^= 0xFF;
+
+        let recovered = rs_decode_codeword_with_erasures(&code, &[4, 4, 4], 0).unwrap();
         assert_eq!(recovered, data);
     }
 

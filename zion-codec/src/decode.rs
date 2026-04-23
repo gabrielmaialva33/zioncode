@@ -1,7 +1,7 @@
 //! Single-symbol decoder. See spec section 6.3.
 
-use crate::constants::{BLOCK_HEADER_LEN, MAX_SYMBOL_BYTES, RS_K, RS_N};
-use crate::ecc::{deinterleave_column_major, rs_decode_codeword};
+use crate::constants::{BLOCK_HEADER_LEN, MAX_SYMBOL_BYTES, RS_N};
+use crate::ecc::{EccProfile, deinterleave_column_major, rs_decode_codeword_with_profile};
 use crate::error::{BlockError, SymbolError};
 use crate::format::{BlockEntry, SymbolHeader};
 
@@ -34,19 +34,40 @@ pub fn decode_symbol(symbol_bytes: &[u8]) -> Result<DecodedSymbol, SymbolError> 
     }
 
     let k = symbol_bytes.len() / RS_N;
+    let mut first_error: Option<SymbolError> = None;
+    for profile in EccProfile::all() {
+        match decode_symbol_with_profile(symbol_bytes, k, profile) {
+            Ok(Some(decoded)) => return Ok(decoded),
+            Ok(None) => {}
+            Err(err) => {
+                first_error.get_or_insert(err);
+            }
+        }
+    }
 
+    Err(first_error.unwrap_or(SymbolError::HeaderCrcMismatch))
+}
+
+fn decode_symbol_with_profile(
+    symbol_bytes: &[u8],
+    k: usize,
+    profile: EccProfile,
+) -> Result<Option<DecodedSymbol>, SymbolError> {
     let codewords = deinterleave_column_major(symbol_bytes, k);
-    let mut pre_ecc = Vec::with_capacity(k * RS_K);
+    let mut pre_ecc = Vec::with_capacity(k * profile.data_len());
     for (j, cw) in codewords.iter().enumerate() {
         #[allow(
             clippy::cast_possible_truncation,
             reason = "k <= MAX_K = 4112 fits u16"
         )]
-        let chunk = rs_decode_codeword(cw, j as u16)?;
+        let chunk = rs_decode_codeword_with_profile(cw, profile, j as u16)?;
         pre_ecc.extend_from_slice(&chunk);
     }
 
     let (header, header_bytes_consumed) = SymbolHeader::parse(&pre_ecc)?;
+    if EccProfile::from_header_flags(header.flags) != Some(profile) {
+        return Ok(None);
+    }
     if header
         .block_start
         .checked_add(u32::from(header.block_count))
@@ -82,14 +103,14 @@ pub fn decode_symbol(symbol_bytes: &[u8]) -> Result<DecodedSymbol, SymbolError> 
         }
     }
 
-    Ok(DecodedSymbol { header, blocks })
+    Ok(Some(DecodedSymbol { header, blocks }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::constants::HEADER_LEN_V1;
-    use crate::encode::encode_single_symbol;
+    use crate::encode::{encode_single_symbol, encode_single_symbol_with_profile};
 
     #[test]
     fn roundtrip_single_symbol() {
@@ -177,5 +198,40 @@ mod tests {
                 block_count: 1,
             })
         ));
+    }
+
+    #[test]
+    fn decodes_all_ecc_profiles() {
+        for profile in EccProfile::all() {
+            #[allow(
+                clippy::cast_possible_truncation,
+                reason = "HEADER_LEN_V1 = 82 fits u8"
+            )]
+            let header = SymbolHeader {
+                header_len: HEADER_LEN_V1 as u8,
+                flags: profile.header_flags(),
+                file_id: [0xAA; 16],
+                file_size: 50,
+                total_blocks: 1,
+                total_symbols: 1,
+                symbol_index: 0,
+                block_start: 0,
+                block_count: 1,
+                global_hash: [0xBB; 32],
+            };
+            let block = BlockEntry {
+                compressed: false,
+                payload: (0u8..50).collect(),
+            };
+            let symbol_bytes = encode_single_symbol_with_profile(
+                &header,
+                std::slice::from_ref(&block),
+                5,
+                profile,
+            );
+            let decoded = decode_symbol(&symbol_bytes).unwrap();
+            assert_eq!(decoded.header.flags, profile.header_flags());
+            assert_eq!(decoded.blocks[0].as_ref().unwrap(), &block);
+        }
     }
 }

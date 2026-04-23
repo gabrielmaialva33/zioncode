@@ -3,6 +3,7 @@ use clap::Args as ClapArgs;
 use std::fs;
 use std::path::PathBuf;
 use zion_codec::decode::decode_symbol;
+use zion_codec::ecc::EccProfile;
 
 #[derive(ClapArgs)]
 pub struct Args {
@@ -23,6 +24,12 @@ pub fn run(args: Args) -> Result<()> {
 
     println!("symbol            : {}", args.symbol.display());
     println!("bytes_transmitted : {}", bytes.len());
+    println!(
+        "ecc_profile       : {}",
+        EccProfile::from_header_flags(h.flags)
+            .map(EccProfile::name)
+            .unwrap_or("unknown")
+    );
     println!("file_id           : {}", uuid::Uuid::from_bytes(h.file_id));
     println!("file_size         : {}", h.file_size);
     println!("total_blocks      : {}", h.total_blocks);

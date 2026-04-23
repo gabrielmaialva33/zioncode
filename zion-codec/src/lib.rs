@@ -14,4 +14,7 @@ pub mod encode;
 pub mod error;
 pub mod format;
 pub mod reassemble;
+mod types;
 pub mod zstd_layer;
+
+pub use types::{FileId, GlobalHash, SymbolBytes};

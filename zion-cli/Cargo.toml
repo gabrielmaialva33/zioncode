@@ -1,0 +1,17 @@
+[package]
+name = "zion-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "zion"
+path = "src/main.rs"
+
+[dependencies]
+zion-codec = { path = "../zion-codec" }
+clap.workspace = true
+anyhow.workspace = true
+uuid.workspace = true
+hex = "0.4"

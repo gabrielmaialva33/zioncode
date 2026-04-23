@@ -13,4 +13,5 @@ pub mod ecc;
 pub mod encode;
 pub mod error;
 pub mod format;
+pub mod reassemble;
 pub mod zstd_layer;

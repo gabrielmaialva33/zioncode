@@ -10,5 +10,6 @@ pub mod constants;
 pub mod crc;
 pub mod error;
 pub mod ecc;
+pub mod encode;
 pub mod format;
 pub mod zstd_layer;

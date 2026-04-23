@@ -1,0 +1,37 @@
+[package]
+name = "zion-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+zion-codec = { path = "../zion-codec" }
+
+[[bin]]
+name = "decode_full"
+path = "fuzz_targets/decode_full.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_header"
+path = "fuzz_targets/parse_header.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_block"
+path = "fuzz_targets/parse_block.rs"
+test = false
+doc = false
+bench = false
+
+# Release profile is required for fuzzing (libfuzzer needs opt-level >= 1).
+[profile.release]
+debug = 1

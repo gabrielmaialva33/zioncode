@@ -3,6 +3,7 @@
 
 use crate::constants::{HEADER_LEN_V1, MAGIC, VERSION};
 use crate::crc::crc32c;
+use crate::ecc::EccProfile;
 use crate::error::SymbolError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,7 +104,7 @@ impl SymbolHeader {
         }
 
         let flags = u16::from_le_bytes(bytes[6..8].try_into().unwrap());
-        if flags != 0 {
+        if EccProfile::from_header_flags(flags).is_none() {
             return Err(SymbolError::UnsupportedHeaderFlags { flags });
         }
         let file_id: [u8; 16] = bytes[8..24].try_into().unwrap();
@@ -211,14 +212,24 @@ mod tests {
     }
 
     #[test]
-    fn nonzero_header_flags_are_rejected() {
+    fn supported_ecc_profile_flags_are_accepted() {
         let mut bytes = sample_header().serialize_v1();
         bytes[6..8].copy_from_slice(&1u16.to_le_bytes());
         let crc = crc32c(&bytes[0..78]);
         bytes[78..82].copy_from_slice(&crc.to_le_bytes());
+        let (parsed, _) = SymbolHeader::parse(&bytes).unwrap();
+        assert_eq!(parsed.flags, 1);
+    }
+
+    #[test]
+    fn reserved_header_flags_are_rejected() {
+        let mut bytes = sample_header().serialize_v1();
+        bytes[6..8].copy_from_slice(&3u16.to_le_bytes());
+        let crc = crc32c(&bytes[0..78]);
+        bytes[78..82].copy_from_slice(&crc.to_le_bytes());
         assert!(matches!(
             SymbolHeader::parse(&bytes),
-            Err(SymbolError::UnsupportedHeaderFlags { flags: 1 })
+            Err(SymbolError::UnsupportedHeaderFlags { flags: 3 })
         ));
     }
 

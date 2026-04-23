@@ -6,7 +6,7 @@
 //! requires even `shard_bytes >= 2`, which breaks the 255-byte codeword contract.
 
 use crate::constants::{RS_K, RS_N};
-use crate::error::SymbolError;
+use crate::error::{EncodeError, SymbolError};
 use reed_solomon::{Decoder, Encoder};
 
 /// Reed-Solomon density/robustness profile.
@@ -88,7 +88,26 @@ pub fn rs_encode_codeword(data: &[u8; RS_K]) -> [u8; RS_N] {
 /// Panics if `data.len() != profile.data_len()`.
 #[must_use]
 pub fn rs_encode_codeword_with_profile(data: &[u8], profile: EccProfile) -> [u8; RS_N] {
-    assert_eq!(data.len(), profile.data_len());
+    try_rs_encode_codeword_with_profile(data, profile)
+        .expect("caller must provide data matching the selected RS profile")
+}
+
+/// Encode one codeword using the selected profile.
+///
+/// # Errors
+/// Returns `EncodeError::InvalidCodewordDataLength` if `data.len()` does not
+/// match the profile's data length.
+pub fn try_rs_encode_codeword_with_profile(
+    data: &[u8],
+    profile: EccProfile,
+) -> Result<[u8; RS_N], EncodeError> {
+    if data.len() != profile.data_len() {
+        return Err(EncodeError::InvalidCodewordDataLength {
+            profile: profile.name(),
+            got: data.len(),
+            expected: profile.data_len(),
+        });
+    }
     let encoder = Encoder::new(profile.parity_len());
     let codeword = encoder.encode(data);
 
@@ -96,7 +115,7 @@ pub fn rs_encode_codeword_with_profile(data: &[u8], profile: EccProfile) -> [u8;
     let data_len = profile.data_len();
     out[..data_len].copy_from_slice(&codeword[..data_len]);
     out[data_len..].copy_from_slice(&codeword[data_len..RS_N]);
-    out
+    Ok(out)
 }
 
 /// Decode 255 bytes back into the original 223 data bytes.
@@ -221,14 +240,32 @@ pub fn interleave_column_major(codewords: &[[u8; RS_N]]) -> Vec<u8> {
 /// Panics if `symbol_bytes.len() != k * RS_N`.
 #[must_use]
 pub fn deinterleave_column_major(symbol_bytes: &[u8], k: usize) -> Vec<[u8; RS_N]> {
-    assert_eq!(symbol_bytes.len(), k * RS_N);
+    try_deinterleave_column_major(symbol_bytes, k)
+        .expect("caller must provide a K*255 interleaved buffer")
+}
+
+/// Fallible inverse of [`interleave_column_major`].
+///
+/// # Errors
+/// Returns `SymbolError::InvalidInterleaveGeometry` when `k == 0` or
+/// `symbol_bytes.len() != k * 255`.
+pub fn try_deinterleave_column_major(
+    symbol_bytes: &[u8],
+    k: usize,
+) -> Result<Vec<[u8; RS_N]>, SymbolError> {
+    if k == 0 || symbol_bytes.len() != k * RS_N {
+        return Err(SymbolError::InvalidInterleaveGeometry {
+            symbol_len: symbol_bytes.len(),
+            k,
+        });
+    }
     let mut out = vec![[0u8; RS_N]; k];
     for r in 0..RS_N {
         for (j, cw) in out.iter_mut().enumerate() {
             cw[r] = symbol_bytes[r * k + j];
         }
     }
-    out
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -259,6 +296,18 @@ mod tests {
         assert_eq!(EccProfile::Balanced.parity_len(), 16);
         assert_eq!(EccProfile::Dense.data_len(), 247);
         assert_eq!(EccProfile::Dense.parity_len(), 8);
+    }
+
+    #[test]
+    fn fallible_encode_rejects_wrong_profile_data_length() {
+        assert!(matches!(
+            try_rs_encode_codeword_with_profile(&[0u8; 10], EccProfile::Safe),
+            Err(EncodeError::InvalidCodewordDataLength {
+                profile: "safe",
+                got: 10,
+                expected: 223,
+            })
+        ));
     }
 }
 
@@ -369,6 +418,17 @@ mod decode_tests {
         assert_eq!(interleaved.len(), 10 * RS_N);
         let back = deinterleave_column_major(&interleaved, 10);
         assert_eq!(back, codewords);
+    }
+
+    #[test]
+    fn fallible_deinterleave_rejects_invalid_geometry() {
+        assert!(matches!(
+            try_deinterleave_column_major(&[0u8; 254], 1),
+            Err(SymbolError::InvalidInterleaveGeometry {
+                symbol_len: 254,
+                k: 1,
+            })
+        ));
     }
 
     #[test]

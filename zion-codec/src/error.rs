@@ -33,6 +33,13 @@ pub enum EncodeError {
 
     #[error("symbol payload exceeds selected profile capacity: {got} > {max}")]
     SymbolPayloadTooLarge { got: usize, max: usize },
+
+    #[error("invalid RS data length for profile {profile}: got {got}, expected {expected}")]
+    InvalidCodewordDataLength {
+        profile: &'static str,
+        got: usize,
+        expected: usize,
+    },
 }
 
 #[derive(Debug, Error)]
@@ -70,6 +77,9 @@ pub enum SymbolError {
 
     #[error("symbol exceeds maximum allowed size: {got} > {max}")]
     SymbolByteLengthTooLarge { got: usize, max: usize },
+
+    #[error("invalid interleave geometry: symbol_len={symbol_len}, k={k}")]
+    InvalidInterleaveGeometry { symbol_len: usize, k: usize },
 
     #[error("block range overflows u32: block_start={block_start}, block_count={block_count}")]
     BlockRangeOverflow { block_start: u32, block_count: u16 },

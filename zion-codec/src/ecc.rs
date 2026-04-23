@@ -1,25 +1,101 @@
-//! Reed-Solomon RS(255, 223) over GF(256) plus column-major interleaving.
+//! Reed-Solomon RS(255, K) over GF(256) plus column-major interleaving.
 //! See spec section 6.
 //!
 //! Implemented through the `reed-solomon` crate (BCH over GF(256)).
 //! `reed-solomon-simd` does not fit here because it operates on GF(2^16) and
 //! requires even `shard_bytes >= 2`, which breaks the 255-byte codeword contract.
 
-use crate::constants::{RS_K, RS_N, RS_PARITY};
+use crate::constants::{RS_K, RS_N};
 use crate::error::SymbolError;
 use reed_solomon::{Decoder, Encoder};
+
+/// Reed-Solomon density/robustness profile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EccProfile {
+    /// RS(255,223): 32 parity bytes, corrects up to 16 unknown bad bytes.
+    Safe,
+    /// RS(255,239): 16 parity bytes, corrects up to 8 unknown bad bytes.
+    Balanced,
+    /// RS(255,247): 8 parity bytes, corrects up to 4 unknown bad bytes.
+    Dense,
+}
+
+impl EccProfile {
+    #[must_use]
+    pub const fn data_len(self) -> usize {
+        match self {
+            Self::Safe => 223,
+            Self::Balanced => 239,
+            Self::Dense => 247,
+        }
+    }
+
+    #[must_use]
+    pub const fn parity_len(self) -> usize {
+        RS_N - self.data_len()
+    }
+
+    #[must_use]
+    pub const fn correction_budget(self) -> usize {
+        self.parity_len() / 2
+    }
+
+    #[must_use]
+    pub const fn header_flags(self) -> u16 {
+        match self {
+            Self::Safe => 0,
+            Self::Balanced => 1,
+            Self::Dense => 2,
+        }
+    }
+
+    #[must_use]
+    pub const fn from_header_flags(flags: u16) -> Option<Self> {
+        match flags {
+            0 => Some(Self::Safe),
+            1 => Some(Self::Balanced),
+            2 => Some(Self::Dense),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn all() -> [Self; 3] {
+        [Self::Safe, Self::Balanced, Self::Dense]
+    }
+
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Safe => "safe",
+            Self::Balanced => "balanced",
+            Self::Dense => "dense",
+        }
+    }
+}
 
 /// Encode 223 data bytes into 255 bytes (223 + 32 parity).
 ///
 /// Output: `data[0..223]` followed by 32 parity bytes (Reed-Solomon BCH, GF(256)).
 #[must_use]
 pub fn rs_encode_codeword(data: &[u8; RS_K]) -> [u8; RS_N] {
-    let encoder = Encoder::new(RS_PARITY);
+    rs_encode_codeword_with_profile(data, EccProfile::Safe)
+}
+
+/// Encode one codeword using the selected profile.
+///
+/// # Panics
+/// Panics if `data.len() != profile.data_len()`.
+#[must_use]
+pub fn rs_encode_codeword_with_profile(data: &[u8], profile: EccProfile) -> [u8; RS_N] {
+    assert_eq!(data.len(), profile.data_len());
+    let encoder = Encoder::new(profile.parity_len());
     let codeword = encoder.encode(data);
 
     let mut out = [0u8; RS_N];
-    out[..RS_K].copy_from_slice(&codeword[..RS_K]);
-    out[RS_K..].copy_from_slice(&codeword[RS_K..RS_N]);
+    let data_len = profile.data_len();
+    out[..data_len].copy_from_slice(&codeword[..data_len]);
+    out[data_len..].copy_from_slice(&codeword[data_len..RS_N]);
     out
 }
 
@@ -33,17 +109,29 @@ pub fn rs_decode_codeword(
     code: &[u8; RS_N],
     codeword_index: u16,
 ) -> Result<[u8; RS_K], SymbolError> {
-    let decoder = Decoder::new(RS_PARITY);
+    let data = rs_decode_codeword_with_profile(code, EccProfile::Safe, codeword_index)?;
+    let mut out = [0u8; RS_K];
+    out.copy_from_slice(&data);
+    Ok(out)
+}
+
+/// Decode one codeword using the selected profile.
+///
+/// # Errors
+/// Returns `SymbolError::RsDecodeFailed` if RS cannot correct the codeword.
+pub fn rs_decode_codeword_with_profile(
+    code: &[u8; RS_N],
+    profile: EccProfile,
+    codeword_index: u16,
+) -> Result<Vec<u8>, SymbolError> {
+    let decoder = Decoder::new(profile.parity_len());
     let buffer = decoder
         .correct(code, None)
         .map_err(|_| SymbolError::RsDecodeFailed { codeword_index })?;
 
     let data = buffer.data();
-    debug_assert_eq!(data.len(), RS_K);
-
-    let mut out = [0u8; RS_K];
-    out.copy_from_slice(data);
-    Ok(out)
+    debug_assert_eq!(data.len(), profile.data_len());
+    Ok(data.to_vec())
 }
 
 /// Column-major interleave: given K codewords of `RS_N` bytes each, produce a
@@ -101,6 +189,16 @@ mod tests {
         let code_b = rs_encode_codeword(&data_b);
         assert_ne!(&code_a[RS_K..], &code_b[RS_K..]);
     }
+
+    #[test]
+    fn profiles_have_expected_dimensions() {
+        assert_eq!(EccProfile::Safe.data_len(), 223);
+        assert_eq!(EccProfile::Safe.parity_len(), 32);
+        assert_eq!(EccProfile::Balanced.data_len(), 239);
+        assert_eq!(EccProfile::Balanced.parity_len(), 16);
+        assert_eq!(EccProfile::Dense.data_len(), 247);
+        assert_eq!(EccProfile::Dense.parity_len(), 8);
+    }
 }
 
 #[cfg(test)]
@@ -109,10 +207,12 @@ mod decode_tests {
 
     #[test]
     fn rs_roundtrip_clean() {
-        let data = [0x42u8; RS_K];
-        let code = rs_encode_codeword(&data);
-        let recovered = rs_decode_codeword(&code, 0).unwrap();
-        assert_eq!(recovered, data);
+        for profile in EccProfile::all() {
+            let data = vec![0x42u8; profile.data_len()];
+            let code = rs_encode_codeword_with_profile(&data, profile);
+            let recovered = rs_decode_codeword_with_profile(&code, profile, 0).unwrap();
+            assert_eq!(recovered, data);
+        }
     }
 
     #[test]

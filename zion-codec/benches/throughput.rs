@@ -9,7 +9,7 @@ fn text_corpus() -> Vec<u8> {
 }
 
 fn random_corpus() -> Vec<u8> {
-    use rand::{RngCore, SeedableRng};
+    use rand::{Rng, SeedableRng};
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let mut v = vec![0u8; 100_000];
     rng.fill_bytes(&mut v);

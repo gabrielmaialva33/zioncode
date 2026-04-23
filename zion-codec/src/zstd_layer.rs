@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn incompressible_falls_back_to_raw() {
-        use rand::RngCore;
+        use rand::Rng;
         let mut rng = rand::rng();
         let mut raw = vec![0u8; BLOCK_SIZE_RAW];
         rng.fill_bytes(&mut raw);

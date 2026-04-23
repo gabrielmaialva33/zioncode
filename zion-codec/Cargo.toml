@@ -1,0 +1,28 @@
+[package]
+name = "zion-codec"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+zstd.workspace = true
+reed-solomon.workspace = true
+blake3.workspace = true
+crc32c.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+hex-literal.workspace = true
+rand = "0.9"
+criterion.workspace = true
+
+[[bench]]
+name = "throughput"
+harness = false
+
+[[bench]]
+name = "ecc"
+harness = false

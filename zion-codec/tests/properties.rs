@@ -1,8 +1,8 @@
 use proptest::prelude::*;
-use zion_codec::constants::{BLOCK_SIZE_RAW, HEADER_LEN_V1, RS_K, ZSTD_LEVEL_DEFAULT};
+use zion_codec::constants::{BLOCK_SIZE_RAW, HEADER_LEN_V1, RS_K};
 use zion_codec::decode::decode_symbol;
-use zion_codec::encode::encode_file;
 use zion_codec::reassemble::FileReassembler;
+use zion_codec::{Decoder, Encoder, EncoderConfig};
 
 /// Compute the minimum K that can hold a file of `n` bytes in the worst case
 /// (one raw block up to 8192 bytes plus the v1 header).
@@ -25,13 +25,8 @@ proptest! {
         k_offset in 0u16..50,
     ) {
         let k = min_k_for_bytes(bytes.len()).saturating_add(k_offset);
-        let encoded = encode_file(&bytes, k, ZSTD_LEVEL_DEFAULT).unwrap();
-        let mut reasm = FileReassembler::new();
-        for sym in encoded.symbols {
-            let decoded = decode_symbol(&sym).unwrap();
-            reasm.add_symbol(decoded).unwrap();
-        }
-        let recovered = reasm.finalize().unwrap();
+        let encoded = Encoder::new(EncoderConfig::fixed_k(k)).encode(&bytes).unwrap();
+        let recovered = Decoder::default().decode_file(&encoded.symbols).unwrap();
         prop_assert_eq!(recovered, bytes);
     }
 
@@ -42,7 +37,7 @@ proptest! {
         k_offset in 0u16..20,
     ) {
         let k = min_k_for_bytes(bytes.len()).saturating_add(k_offset);
-        let encoded = encode_file(&bytes, k, ZSTD_LEVEL_DEFAULT).unwrap();
+        let encoded = Encoder::new(EncoderConfig::fixed_k(k)).encode(&bytes).unwrap();
         for sym in &encoded.symbols {
             prop_assert_eq!(sym.len() % 255, 0);
             prop_assert_eq!(sym.len(), usize::from(k) * 255);
@@ -63,7 +58,7 @@ proptest! {
         corruption_seed in 1u64..10_000,
     ) {
         let k = min_k_for_bytes(bytes.len()).saturating_add(k_offset);
-        let encoded = encode_file(&bytes, k, ZSTD_LEVEL_DEFAULT).unwrap();
+        let encoded = Encoder::new(EncoderConfig::fixed_k(k)).encode(&bytes).unwrap();
         let mut sym = encoded.symbols[0].clone();
         let k_usize = usize::from(k);
 

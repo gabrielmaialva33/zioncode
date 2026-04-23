@@ -2,8 +2,7 @@ use anyhow::{Context, Result};
 use clap::Args as ClapArgs;
 use std::fs;
 use std::path::PathBuf;
-use zion_codec::decode::decode_symbol;
-use zion_codec::ecc::EccProfile;
+use zion_codec::{Decoder, EccProfile};
 
 #[derive(ClapArgs)]
 pub struct Args {
@@ -18,7 +17,8 @@ pub struct Args {
 pub fn run(args: Args) -> Result<()> {
     let bytes =
         fs::read(&args.symbol).with_context(|| format!("reading {}", args.symbol.display()))?;
-    let decoded = decode_symbol(&bytes)
+    let decoded = Decoder::default()
+        .decode_symbol(&bytes)
         .with_context(|| format!("decode_symbol for {}", args.symbol.display()))?;
     let h = &decoded.header;
 

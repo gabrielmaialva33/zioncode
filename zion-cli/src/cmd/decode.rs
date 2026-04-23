@@ -2,9 +2,7 @@ use anyhow::{Context, Result};
 use clap::Args as ClapArgs;
 use std::fs;
 use std::path::PathBuf;
-use zion_codec::decode::decode_symbol;
-use zion_codec::error::FileError;
-use zion_codec::reassemble::{FileReassembler, FinalizedFile, HashStatus};
+use zion_codec::{Decoder, FileError, FileReassembler, FinalizedFile, HashStatus};
 
 #[derive(ClapArgs)]
 pub struct Args {
@@ -27,10 +25,12 @@ pub struct Args {
 pub fn run(args: Args) -> Result<()> {
     anyhow::ensure!(!args.symbols.is_empty(), "provide at least one symbol");
 
+    let decoder = Decoder::default();
     let mut reasm = FileReassembler::new();
     for path in &args.symbols {
         let bytes = fs::read(path).with_context(|| format!("reading {}", path.display()))?;
-        let decoded = decode_symbol(&bytes)
+        let decoded = decoder
+            .decode_symbol(&bytes)
             .with_context(|| format!("decode_symbol for {}", path.display()))?;
         reasm
             .add_symbol(decoded)
@@ -72,6 +72,7 @@ mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
     use zion_codec::constants::ZSTD_LEVEL_DEFAULT;
+    use zion_codec::decode::decode_symbol;
     use zion_codec::encode::{encode_file, encode_single_symbol};
     use zion_codec::format::BlockEntry;
     use zion_codec::zstd_layer::decode_block;

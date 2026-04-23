@@ -2,9 +2,7 @@ use anyhow::{Context, Result};
 use clap::{Args as ClapArgs, ValueEnum};
 use std::fs;
 use std::path::PathBuf;
-use zion_codec::constants::ZSTD_LEVEL_DEFAULT;
-use zion_codec::ecc::EccProfile;
-use zion_codec::encode::{encode_file_auto_k, encode_file_with_profile};
+use zion_codec::{EccProfile, Encoder, EncoderConfig};
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum ProfileArg {
@@ -44,7 +42,7 @@ pub struct Args {
     pub profile: ProfileArg,
 
     /// zstd compression level (1-22).
-    #[arg(long, default_value_t = ZSTD_LEVEL_DEFAULT)]
+    #[arg(long, default_value_t = EncoderConfig::default().zstd_level)]
     pub zstd_level: i32,
 }
 
@@ -54,12 +52,12 @@ pub struct Args {
 /// Propagates I/O or encoding errors.
 pub fn run(args: Args) -> Result<()> {
     let raw = fs::read(&args.input).with_context(|| format!("reading {}", args.input.display()))?;
-    let profile = EccProfile::from(args.profile);
-    let encoded = match args.k {
-        Some(k) => encode_file_with_profile(&raw, k, args.zstd_level, profile),
-        None => encode_file_auto_k(&raw, args.zstd_level, profile),
-    }
-    .context("encode_file")?;
+    let config = EncoderConfig {
+        k: args.k,
+        zstd_level: args.zstd_level,
+        ecc_profile: EccProfile::from(args.profile),
+    };
+    let encoded = Encoder::new(config).encode(&raw).context("encode_file")?;
 
     let prefix_file_name = args
         .output_prefix
@@ -78,7 +76,7 @@ pub fn run(args: Args) -> Result<()> {
     eprintln!(
         "{} symbols generated (file_id={}, k={}, profile={})",
         encoded.symbols.len(),
-        uuid::Uuid::from_bytes(encoded.file_id),
+        encoded.file_id,
         encoded.k,
         encoded.ecc_profile.name()
     );

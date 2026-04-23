@@ -1,17 +1,11 @@
-use zion_codec::constants::ZSTD_LEVEL_DEFAULT;
 use zion_codec::decode::decode_symbol;
 use zion_codec::ecc::{interleave_column_major, rs_encode_codeword};
-use zion_codec::encode::encode_file;
 use zion_codec::reassemble::FileReassembler;
+use zion_codec::{Decoder, Encoder, EncoderConfig};
 
 fn encode_decode_roundtrip(raw: &[u8], k: u16) {
-    let encoded = encode_file(raw, k, ZSTD_LEVEL_DEFAULT).unwrap();
-    let mut reasm = FileReassembler::new();
-    for sym in encoded.symbols {
-        let decoded = decode_symbol(&sym).unwrap();
-        reasm.add_symbol(decoded).unwrap();
-    }
-    let recovered = reasm.finalize().unwrap();
+    let encoded = Encoder::new(EncoderConfig::fixed_k(k)).encode(raw).unwrap();
+    let recovered = Decoder::default().decode_file(&encoded.symbols).unwrap();
     assert_eq!(recovered, raw);
 }
 
@@ -45,7 +39,9 @@ fn roundtrip_boundary_sizes() {
 #[test]
 fn missing_symbol_reports_block_range() {
     let raw = vec![0u8; 40_000];
-    let encoded = encode_file(&raw, 148, ZSTD_LEVEL_DEFAULT).unwrap();
+    let encoded = Encoder::new(EncoderConfig::fixed_k(148))
+        .encode(&raw)
+        .unwrap();
     assert!(encoded.symbols.len() >= 2);
 
     let mut reasm = FileReassembler::new();
@@ -64,7 +60,9 @@ fn missing_symbol_reports_block_range() {
 #[test]
 fn out_of_order_symbols_work() {
     let raw = vec![0u8; 40_000];
-    let encoded = encode_file(&raw, 148, ZSTD_LEVEL_DEFAULT).unwrap();
+    let encoded = Encoder::new(EncoderConfig::fixed_k(148))
+        .encode(&raw)
+        .unwrap();
 
     let mut reasm = FileReassembler::new();
     // Add in reverse order
@@ -79,7 +77,9 @@ fn out_of_order_symbols_work() {
 #[test]
 fn duplicate_symbol_idempotent() {
     let raw = vec![0u8; 5000];
-    let encoded = encode_file(&raw, 38, ZSTD_LEVEL_DEFAULT).unwrap();
+    let encoded = Encoder::new(EncoderConfig::fixed_k(38))
+        .encode(&raw)
+        .unwrap();
     assert_eq!(encoded.symbols.len(), 1);
 
     let mut reasm = FileReassembler::new();
@@ -98,7 +98,9 @@ fn duplicate_symbol_idempotent() {
 #[test]
 fn recaptured_symbol_can_fill_missing_blocks() {
     let raw = vec![0x5Au8; 5000];
-    let encoded = encode_file(&raw, 38, ZSTD_LEVEL_DEFAULT).unwrap();
+    let encoded = Encoder::new(EncoderConfig::fixed_k(38))
+        .encode(&raw)
+        .unwrap();
     assert_eq!(encoded.symbols.len(), 1);
 
     let good = decode_symbol(&encoded.symbols[0]).unwrap();
@@ -122,7 +124,9 @@ fn recaptured_symbol_can_fill_missing_blocks() {
 #[test]
 fn invalid_zero_length_file_metadata_is_rejected() {
     let raw = vec![0x33u8; 100];
-    let encoded = encode_file(&raw, 38, ZSTD_LEVEL_DEFAULT).unwrap();
+    let encoded = Encoder::new(EncoderConfig::fixed_k(38))
+        .encode(&raw)
+        .unwrap();
     let mut decoded = decode_symbol(&encoded.symbols[0]).unwrap();
     decoded.header.file_size = 0;
 
@@ -137,8 +141,9 @@ fn invalid_zero_length_file_metadata_is_rejected() {
 #[test]
 fn mixed_file_ids_rejected() {
     let raw = vec![0u8; 5000];
-    let encoded_a = encode_file(&raw, 38, ZSTD_LEVEL_DEFAULT).unwrap();
-    let encoded_b = encode_file(&raw, 38, ZSTD_LEVEL_DEFAULT).unwrap();
+    let encoder = Encoder::new(EncoderConfig::fixed_k(38));
+    let encoded_a = encoder.encode(&raw).unwrap();
+    let encoded_b = encoder.encode(&raw).unwrap();
     // UUIDv4 makes this mismatch effectively certain for this test.
 
     let mut reasm = FileReassembler::new();
@@ -155,7 +160,9 @@ fn mixed_file_ids_rejected() {
 #[test]
 fn overlapping_block_ranges_are_rejected() {
     let raw = vec![0x42u8; 5000];
-    let encoded = encode_file(&raw, 38, ZSTD_LEVEL_DEFAULT).unwrap();
+    let encoded = Encoder::new(EncoderConfig::fixed_k(38))
+        .encode(&raw)
+        .unwrap();
 
     let mut first = decode_symbol(&encoded.symbols[0]).unwrap();
     first.header.total_symbols = 2;

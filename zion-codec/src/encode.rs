@@ -1,15 +1,19 @@
 //! Single-symbol encoder. Combines header + blocks + padding + RS + interleave.
 //! See spec section 6.2.
 
+mod blocks;
+mod packing;
+
+pub use blocks::split_file_into_blocks;
+pub use packing::{pack_blocks_into_symbols, pack_blocks_into_symbols_with_profile, SymbolPacking};
+
 use crate::constants::{
-    BLOCK_HEADER_LEN, BLOCK_SIZE_RAW, HEADER_LEN_V1, MAX_K, MAX_TOTAL_BLOCKS, MAX_TOTAL_SYMBOLS,
-    RS_N, TARGET_BLOCKS_PER_SYMBOL,
+    BLOCK_SIZE_RAW, HEADER_LEN_V1, MAX_K, MAX_TOTAL_BLOCKS, MAX_TOTAL_SYMBOLS, RS_N,
 };
-use crate::ecc::{EccProfile, interleave_column_major, rs_encode_codeword_with_profile};
+use crate::ecc::{interleave_column_major, rs_encode_codeword_with_profile, EccProfile};
 use crate::error::EncodeError;
 use crate::format::{BlockEntry, SymbolHeader};
-use crate::zstd_layer::encode_block;
-use uuid::Uuid;
+use crate::types::{FileId, GlobalHash, SymbolBytes};
 
 /// Pack the header plus blocks into the pre-ECC buffer, zero-pad to `K*223`,
 /// then apply RS and interleave.
@@ -20,6 +24,20 @@ use uuid::Uuid;
 #[must_use]
 pub fn encode_single_symbol(header: &SymbolHeader, blocks: &[BlockEntry], k: usize) -> Vec<u8> {
     encode_single_symbol_with_profile(header, blocks, k, EccProfile::Safe)
+}
+
+/// Fallible variant of [`encode_single_symbol`].
+///
+/// # Errors
+/// Returns `EncodeError::InvalidK` for `K=0` or
+/// `EncodeError::SymbolPayloadTooLarge` when the header and blocks do not fit
+/// the selected symbol capacity.
+pub fn try_encode_single_symbol(
+    header: &SymbolHeader,
+    blocks: &[BlockEntry],
+    k: usize,
+) -> Result<SymbolBytes, EncodeError> {
+    try_encode_single_symbol_with_profile(header, blocks, k, EccProfile::Safe)
 }
 
 /// Pack, pad, RS-encode, and interleave one symbol with the selected ECC profile.
@@ -34,7 +52,27 @@ pub fn encode_single_symbol_with_profile(
     k: usize,
     profile: EccProfile,
 ) -> Vec<u8> {
+    try_encode_single_symbol_with_profile(header, blocks, k, profile)
+        .expect("caller must provide a valid K and enough symbol capacity")
+        .into_vec()
+}
+
+/// Fallible variant of [`encode_single_symbol_with_profile`].
+///
+/// # Errors
+/// Returns `EncodeError::InvalidK` for `K=0` or
+/// `EncodeError::SymbolPayloadTooLarge` when the header and blocks do not fit
+/// the selected symbol capacity.
+pub fn try_encode_single_symbol_with_profile(
+    header: &SymbolHeader,
+    blocks: &[BlockEntry],
+    k: usize,
+    profile: EccProfile,
+) -> Result<SymbolBytes, EncodeError> {
     debug_assert!(k > 0);
+    if k == 0 {
+        return Err(EncodeError::InvalidK { got: 0 });
+    }
 
     let data_len = profile.data_len();
     let mut pre_ecc = Vec::with_capacity(k * data_len);
@@ -42,13 +80,13 @@ pub fn encode_single_symbol_with_profile(
     for block in blocks {
         pre_ecc.extend_from_slice(&block.serialize());
     }
-    assert!(
-        pre_ecc.len() <= k * data_len,
-        "pre_ecc overflow: {} > {}*{}",
-        pre_ecc.len(),
-        k,
-        data_len
-    );
+    let capacity = k * data_len;
+    if pre_ecc.len() > capacity {
+        return Err(EncodeError::SymbolPayloadTooLarge {
+            got: pre_ecc.len(),
+            max: capacity,
+        });
+    }
     pre_ecc.resize(k * data_len, 0);
 
     let mut codewords: Vec<[u8; RS_N]> = Vec::with_capacity(k);
@@ -56,129 +94,18 @@ pub fn encode_single_symbol_with_profile(
         codewords.push(rs_encode_codeword_with_profile(chunk, profile));
     }
 
-    interleave_column_major(&codewords)
-}
-
-/// Split the file into 8192-byte blocks (the last one may be smaller),
-/// compress each block with `C < R` fallback, and return serializable
-/// `BlockEntry`s.
-///
-/// # Errors
-/// - `EncodeError::EmptyInput` if `raw_file` is empty (unsupported in v1).
-/// - `EncodeError::ZstdEncodeFailed` if zstd fails for any block.
-pub fn split_file_into_blocks(
-    raw_file: &[u8],
-    zstd_level: i32,
-) -> Result<Vec<BlockEntry>, EncodeError> {
-    if raw_file.is_empty() {
-        return Err(EncodeError::EmptyInput);
-    }
-
-    let mut blocks = Vec::with_capacity(raw_file.len().div_ceil(BLOCK_SIZE_RAW));
-    for (i, chunk) in raw_file.chunks(BLOCK_SIZE_RAW).enumerate() {
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "total_blocks <= MAX_TOTAL_BLOCKS = 2^20 fits u32"
-        )]
-        let entry = encode_block(chunk, zstd_level, i as u32)?;
-        blocks.push(entry);
-    }
-    Ok(blocks)
-}
-
-/// Contiguous group of blocks that will occupy one symbol.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SymbolPacking {
-    pub block_start: u32,
-    pub block_count: u16,
-}
-
-/// Implements the contiguous greedy algorithm from spec 3.3.
-///
-/// # Errors
-/// Returns `EncodeError::InsufficientSymbolCapacity` if any single block does
-/// not fit in `k * RS_K - HEADER_LEN_V1` bytes. The caller (subsystem B) must
-/// increase `k` or reduce physical symbol density.
-pub fn pack_blocks_into_symbols(
-    blocks: &[BlockEntry],
-    k: u16,
-) -> Result<Vec<SymbolPacking>, EncodeError> {
-    pack_blocks_into_symbols_with_profile(blocks, k, EccProfile::Safe)
-}
-
-/// Implements the contiguous greedy algorithm for a selected ECC profile.
-///
-/// # Errors
-/// Returns `EncodeError::InsufficientSymbolCapacity` if any single block does
-/// not fit in `k * profile.data_len() - HEADER_LEN_V1` bytes.
-pub fn pack_blocks_into_symbols_with_profile(
-    blocks: &[BlockEntry],
-    k: u16,
-    profile: EccProfile,
-) -> Result<Vec<SymbolPacking>, EncodeError> {
-    let available_capacity = usize::from(k) * profile.data_len();
-    let mut symbols = Vec::new();
-    let mut current_start: u32 = 0;
-    let mut current_count: u16 = 0;
-    let mut current_size: usize = HEADER_LEN_V1;
-    let mut next_block: u32 = 0;
-
-    while (next_block as usize) < blocks.len() {
-        let block_cost = BLOCK_HEADER_LEN + blocks[next_block as usize].payload.len();
-        let fits = current_size + block_cost <= available_capacity;
-        let full = current_count as usize == TARGET_BLOCKS_PER_SYMBOL;
-
-        if full {
-            symbols.push(SymbolPacking {
-                block_start: current_start,
-                block_count: current_count,
-            });
-            current_start = next_block;
-            current_count = 0;
-            current_size = HEADER_LEN_V1;
-        } else if fits {
-            current_count += 1;
-            current_size += block_cost;
-            next_block += 1;
-        } else if current_count == 0 {
-            let min_k_required =
-                u16::try_from((HEADER_LEN_V1 + block_cost).div_ceil(profile.data_len()))
-                    .unwrap_or(u16::MAX);
-            return Err(EncodeError::InsufficientSymbolCapacity {
-                k,
-                min_k_required,
-                block_index: next_block,
-            });
-        } else {
-            symbols.push(SymbolPacking {
-                block_start: current_start,
-                block_count: current_count,
-            });
-            current_start = next_block;
-            current_count = 0;
-            current_size = HEADER_LEN_V1;
-        }
-    }
-
-    if current_count > 0 {
-        symbols.push(SymbolPacking {
-            block_start: current_start,
-            block_count: current_count,
-        });
-    }
-
-    Ok(symbols)
+    Ok(SymbolBytes::from_vec(interleave_column_major(&codewords)))
 }
 
 /// Full encoder output: symbols ready for subsystem B plus metadata for
 /// tracing and tests.
 #[derive(Debug)]
 pub struct EncodedFile {
-    pub file_id: [u8; 16],
-    pub global_hash: [u8; 32],
+    pub file_id: FileId,
+    pub global_hash: GlobalHash,
     pub k: u16,
     pub ecc_profile: EccProfile,
-    pub symbols: Vec<Vec<u8>>,
+    pub symbols: Vec<SymbolBytes>,
 }
 
 /// Full encoder pipeline: split -> pack -> build per-symbol header -> serialize -> RS.
@@ -186,13 +113,6 @@ pub struct EncodedFile {
 /// # Errors
 /// Propagates `EncodeError::EmptyInput`, `ZstdEncodeFailed`, or
 /// `InsufficientSymbolCapacity` as appropriate.
-///
-/// # Panics
-/// Panics if `raw_file.len()` does not fit in u64 (impossible on 64-bit
-/// targets), or if `blocks.len()` exceeds u32, or if `symbols.len()` exceeds
-/// u16. These cases exceed the implementation limits
-/// (`MAX_TOTAL_BLOCKS=2^20`, `MAX_TOTAL_SYMBOLS=2^14`) and should have been
-/// rejected by higher layers.
 pub fn encode_file(raw_file: &[u8], k: u16, zstd_level: i32) -> Result<EncodedFile, EncodeError> {
     encode_file_with_profile(raw_file, k, zstd_level, EccProfile::Safe)
 }
@@ -287,10 +207,16 @@ fn encode_prepared_blocks(
     let packings = pack_blocks_into_symbols_with_profile(blocks, k, profile)?;
     validate_symbol_count(packings.len())?;
 
-    let total_blocks = u32::try_from(blocks.len()).expect("blocks.len() fits u32");
-    let total_symbols = u16::try_from(packings.len()).expect("packings.len() fits u16");
-    let file_id = *Uuid::new_v4().as_bytes();
-    let global_hash: [u8; 32] = blake3::hash(raw_file).as_bytes().to_owned();
+    let total_blocks = u32::try_from(blocks.len()).map_err(|_| EncodeError::TooManyBlocks {
+        got: blocks.len(),
+        max: MAX_TOTAL_BLOCKS,
+    })?;
+    let total_symbols = u16::try_from(packings.len()).map_err(|_| EncodeError::TooManySymbols {
+        got: packings.len(),
+        max: MAX_TOTAL_SYMBOLS,
+    })?;
+    let file_id = FileId::new_random();
+    let global_hash = GlobalHash::digest(raw_file);
 
     let mut symbols = Vec::with_capacity(packings.len());
     for (idx, packing) in packings.iter().enumerate() {
@@ -301,20 +227,23 @@ fn encode_prepared_blocks(
         let header = SymbolHeader {
             header_len: HEADER_LEN_V1 as u8,
             flags: profile.header_flags(),
-            file_id,
+            file_id: file_id.to_bytes(),
             file_size: raw_file.len() as u64,
             total_blocks,
             total_symbols,
-            symbol_index: u16::try_from(idx).expect("idx fits u16"),
+            symbol_index: u16::try_from(idx).map_err(|_| EncodeError::TooManySymbols {
+                got: packings.len(),
+                max: MAX_TOTAL_SYMBOLS,
+            })?,
             block_start: packing.block_start,
             block_count: packing.block_count,
-            global_hash,
+            global_hash: global_hash.to_bytes(),
         };
         let start = packing.block_start as usize;
         let end = start + packing.block_count as usize;
         let symbol_blocks = &blocks[start..end];
         let symbol_bytes =
-            encode_single_symbol_with_profile(&header, symbol_blocks, usize::from(k), profile);
+            try_encode_single_symbol_with_profile(&header, symbol_blocks, usize::from(k), profile)?;
         symbols.push(symbol_bytes);
     }
 
@@ -328,6 +257,9 @@ fn encode_prepared_blocks(
 }
 
 fn validate_k(k: u16) -> Result<(), EncodeError> {
+    if k == 0 {
+        return Err(EncodeError::InvalidK { got: k });
+    }
     if usize::from(k) > MAX_K {
         return Err(EncodeError::KTooLarge { got: k, max: MAX_K });
     }

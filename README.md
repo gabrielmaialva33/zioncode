@@ -62,7 +62,7 @@ file bytes ─▶ zion-codec ─▶ .zbin symbols ─▶ [optical transport] ─
 
 - 🚫 **`#![forbid(unsafe_code)]`** — pure safe Rust, clippy pedantic enabled
 - 🗜️ **zstd per block** with raw fallback when compression does not pay off
-- 🛡️ **Reed–Solomon (255, 223)** in GF(256) — up to **16 byte errors per codeword** recoverable
+- 🛡️ **Reed–Solomon profiles** in GF(256) — `safe`, `balanced`, and `dense` density modes
 - 🧵 **Column-major interleaving** — burst errors spread across codewords
 - ✅ **CRC32C per block** + **BLAKE3-256 global hash** — layered integrity
 - 🧩 **Out-of-order symbol reassembly** with typed error model (missing / duplicate / divergent)
@@ -119,14 +119,14 @@ flowchart LR
     class B,C todo
 ```
 
-| Path | Responsibility | Status |
-|---|---|---|
-| [`zion-codec/`](zion-codec/) | Core library: format, compression, ECC, encode, decode, reassembly | ✅ v1 |
-| [`zion-cli/`](zion-cli/) | Thin `zion` CLI around the library | ✅ v1 |
-| [`zion-codec/tests/`](zion-codec/tests/) | Roundtrip + property-based invariants | ✅ v1 |
-| [`zion-codec/benches/`](zion-codec/benches/) | Criterion benchmarks for hot paths | ✅ v1 |
-| [`fuzz/`](fuzz/) | `cargo-fuzz` targets (nightly) | ✅ v1 |
-| [`docs/superpowers/specs/`](docs/) | Source of truth for v1 wire format | ✅ v1 |
+| Path                                         | Responsibility                                                     | Status |
+|----------------------------------------------|--------------------------------------------------------------------|--------|
+| [`zion-codec/`](zion-codec/)                 | Core library: format, compression, ECC, encode, decode, reassembly | ✅ v1   |
+| [`zion-cli/`](zion-cli/)                     | Thin `zion` CLI around the library                                 | ✅ v1   |
+| [`zion-codec/tests/`](zion-codec/tests/)     | Roundtrip + property-based invariants                              | ✅ v1   |
+| [`zion-codec/benches/`](zion-codec/benches/) | Criterion benchmarks for hot paths                                 | ✅ v1   |
+| [`fuzz/`](fuzz/)                             | `cargo-fuzz` targets (nightly)                                     | ✅ v1   |
+| [`docs/superpowers/specs/`](docs/)           | Source of truth for v1 wire format                                 | ✅ v1   |
 
 ---
 
@@ -140,7 +140,17 @@ cargo run -p zion-cli -- encode ./input.bin --output-prefix ./out/input
 # ▶ writes ./out/input_000.zbin, ./out/input_001.zbin, ...
 ```
 
-Tune the chunking with `--k` (codewords per symbol) and `--zstd-level` (3 · 6 · 9).
+By default, the CLI chooses an automatic `K` that minimizes emitted bytes for the selected profile. Override with `--k` when a renderer needs a fixed physical symbol size.
+
+Profiles:
+
+```sh
+--profile safe      # RS(255,223), strongest default profile
+--profile balanced  # RS(255,239), lower overhead, less correction
+--profile dense     # RS(255,247), lowest overhead, smallest correction budget
+```
+
+Tune compression with `--zstd-level` (3 · 6 · 9).
 </details>
 
 <details>
@@ -150,7 +160,7 @@ Tune the chunking with `--k` (codewords per symbol) and `--zstd-level` (3 · 6 �
 cargo run -p zion-cli -- inspect ./out/input_000.zbin
 ```
 
-Prints the parsed header: file_id, symbol_index, block_start/count, global BLAKE3 hash, compression flag, RS parameters.
+Prints the parsed header: ECC profile, file_id, symbol_index, block_start/count, global BLAKE3 hash, and block status.
 </details>
 
 <details>
@@ -167,12 +177,12 @@ Symbols can be passed in **any order** — the reassembler sorts them via `symbo
 <summary><b>🧰 Use it as a library</b></summary>
 
 ```rust
-use zion_codec::{encode::encode_file, reassemble::FileReassembler, decode::decode_symbol};
+use zion_codec::{decode::decode_symbol, encode::encode_file, reassemble::FileReassembler};
 
-let symbols = encode_file(&file_bytes, /* k = */ 148, /* zstd_level = */ 6)?;
+let encoded = encode_file(&file_bytes, /* k = */ 148, /* zstd_level = */ 6)?;
 
 let mut r = FileReassembler::new();
-for s in &symbols {
+for s in &encoded.symbols {
     r.add_symbol(decode_symbol(s)?)?;
 }
 let restored = r.finalize()?;
@@ -192,14 +202,14 @@ flowchart TD
     zstd --> pack["📦 greedy packing<br/><sub>up to 4 blocks / symbol</sub>"]
     pack --> hdr["🧾 header · 82 B<br/><sub>magic, version, file_id, index</sub>"]
     hdr --> crc["🧮 CRC32C · per block"]
-    crc --> ecc["🛡️ Reed-Solomon 255/223"]
+    crc --> ecc["🛡️ Reed-Solomon profile<br/><sub>safe · balanced · dense</sub>"]
     ecc --> inter["🧵 column-major interleave"]
     inter --> sym([🔣 .zbin symbol])
 
     sym -.capture / transport.-> sym2([🔣 received symbol])
 
     sym2 --> dinter["↔️ deinterleave"]
-    dinter --> rsd["🛡️ RS decode<br/><sub>up to 16 errors / codeword</sub>"]
+    dinter --> rsd["🛡️ RS decode<br/><sub>profile auto-detected</sub>"]
     rsd --> verify["🧮 verify block CRCs"]
     verify --> reasm["🧩 reassemble blocks<br/><sub>out-of-order · duplicates ok</sub>"]
     reasm --> blake["🔐 BLAKE3-256 global check"]
@@ -217,28 +227,28 @@ flowchart TD
 
 ## 🛡️ Layered Robustness
 
-| # | Layer | Scope | What it catches |
-|:-:|---|---|---|
-| 1 | **zstd + raw fallback** | per 8 KiB block | Incompressible data does not inflate |
-| 2 | **CRC32C** | per block | Local payload corruption (single-block loss is recoverable) |
-| 3 | **Reed–Solomon (255,223)** | per codeword | Up to **16 byte errors** per 255-byte codeword |
-| 4 | **Column-major interleave** | per symbol | Bursts of errors get spread across codewords |
-| 5 | **Header CRC32C** | per symbol | Malformed metadata fails fast, not loud |
-| 6 | **BLAKE3-256** | whole file | End-to-end tamper detection across symbols |
-| 7 | **Typed reassembler** | whole file | `MissingBlocks`, `DuplicateSymbol { divergent }`, `InconsistentFileMetadata`, `GlobalHashMismatch` |
+| # | Layer                       | Scope           | What it catches                                                                                    |
+|:-:|-----------------------------|-----------------|----------------------------------------------------------------------------------------------------|
+| 1 | **zstd + raw fallback**     | per 8 KiB block | Incompressible data does not inflate                                                               |
+| 2 | **CRC32C**                  | per block       | Local payload corruption (single-block loss is recoverable)                                        |
+| 3 | **Reed–Solomon profile**    | per codeword    | `safe` corrects up to 16 byte errors; `balanced` 8; `dense` 4                                      |
+| 4 | **Column-major interleave** | per symbol      | Bursts of errors get spread across codewords                                                       |
+| 5 | **Header CRC32C**           | per symbol      | Malformed metadata fails fast, not loud                                                            |
+| 6 | **BLAKE3-256**              | whole file      | End-to-end tamper detection across symbols                                                         |
+| 7 | **Typed reassembler**       | whole file      | `MissingBlocks`, `DuplicateSymbol { divergent }`, `InconsistentFileMetadata`, `GlobalHashMismatch` |
 
 ---
 
 ## 🗺️ Roadmap
 
-| Milestone | Subsystem | State |
-|---|---|:-:|
-| **M1 · v1 freeze** | wire format, constants, error model | ✅ |
-| **M2 · codec core** | encode / decode / reassemble / tests | ✅ |
-| **M3 · hardening** | property tests, `cargo-fuzz`, criterion benches | ✅ |
-| **M4 · optical renderer** | byte stream → grayscale PNG (subsystem B) | 🔜 |
-| **M5 · optical decoder** | camera frame → byte stream (subsystem C) | 🔜 |
-| **M6 · `.zion` container** | PNG + sidecar metadata, unified file extension | 🔜 |
+| Milestone                  | Subsystem                                       | State |
+|----------------------------|-------------------------------------------------|:-----:|
+| **M1 · v1 freeze**         | wire format, constants, error model             |   ✅   |
+| **M2 · codec core**        | encode / decode / reassemble / tests            |   ✅   |
+| **M3 · hardening**         | property tests, `cargo-fuzz`, criterion benches |   ✅   |
+| **M4 · optical renderer**  | byte stream → grayscale PNG (subsystem B)       |  🔜   |
+| **M5 · optical decoder**   | camera frame → byte stream (subsystem C)        |  🔜   |
+| **M6 · `.zion` container** | PNG + sidecar metadata, unified file extension  |  🔜   |
 
 ---
 

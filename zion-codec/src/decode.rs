@@ -1,0 +1,142 @@
+//! Single-symbol decoder. See spec section 6.3.
+
+use crate::constants::{BLOCK_HEADER_LEN, MAX_SYMBOL_BYTES, RS_K, RS_N};
+use crate::ecc::{deinterleave_column_major, rs_decode_codeword};
+use crate::error::{BlockError, SymbolError};
+use crate::format::{BlockEntry, SymbolHeader};
+
+/// Result of decoding one standalone symbol.
+#[derive(Debug)]
+pub struct DecodedSymbol {
+    pub header: SymbolHeader,
+    /// Blocks that passed RS decoding, in order.
+    /// Some may still fail at block level; see `block_failures`.
+    pub blocks: Vec<Result<BlockEntry, BlockError>>,
+}
+
+/// Decode a full symbol from `symbol_bytes`.
+///
+/// # Errors
+/// Returns `SymbolError` if ECC, magic, version, `header_len`, or CRC checks
+/// fail. Block-level failures are reported inside `DecodedSymbol.blocks` as
+/// `Err(_)` without failing the whole symbol.
+pub fn decode_symbol(symbol_bytes: &[u8]) -> Result<DecodedSymbol, SymbolError> {
+    if symbol_bytes.is_empty() || !symbol_bytes.len().is_multiple_of(RS_N) {
+        return Err(SymbolError::BadSize {
+            got: symbol_bytes.len(),
+        });
+    }
+    if symbol_bytes.len() > MAX_SYMBOL_BYTES {
+        return Err(SymbolError::SymbolByteLengthTooLarge {
+            got: symbol_bytes.len(),
+            max: MAX_SYMBOL_BYTES,
+        });
+    }
+
+    let k = symbol_bytes.len() / RS_N;
+
+    let codewords = deinterleave_column_major(symbol_bytes, k);
+    let mut pre_ecc = Vec::with_capacity(k * RS_K);
+    for (j, cw) in codewords.iter().enumerate() {
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "k <= MAX_K = 4112 fits u16"
+        )]
+        let chunk = rs_decode_codeword(cw, j as u16)?;
+        pre_ecc.extend_from_slice(&chunk);
+    }
+
+    let (header, header_bytes_consumed) = SymbolHeader::parse(&pre_ecc)?;
+
+    let mut offset = header_bytes_consumed;
+    let mut blocks: Vec<Result<BlockEntry, BlockError>> =
+        Vec::with_capacity(header.block_count as usize);
+    for i in 0..header.block_count {
+        let global_idx = header.block_start + u32::from(i);
+        if offset + BLOCK_HEADER_LEN > pre_ecc.len() {
+            blocks.push(Err(BlockError::PayloadSizeTooLarge {
+                block_index: global_idx,
+                got: 0,
+            }));
+            break;
+        }
+        match BlockEntry::parse(&pre_ecc[offset..], global_idx) {
+            Ok((entry, consumed)) => {
+                offset += consumed;
+                blocks.push(Ok(entry));
+            }
+            Err(e) => {
+                blocks.push(Err(e));
+                break;
+            }
+        }
+    }
+
+    Ok(DecodedSymbol { header, blocks })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::constants::HEADER_LEN_V1;
+    use crate::encode::encode_single_symbol;
+
+    #[test]
+    fn roundtrip_single_symbol() {
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "HEADER_LEN_V1 = 82 fits u8"
+        )]
+        let header = SymbolHeader {
+            header_len: HEADER_LEN_V1 as u8,
+            flags: 0,
+            file_id: [0xAA; 16],
+            file_size: 50,
+            total_blocks: 1,
+            total_symbols: 1,
+            symbol_index: 0,
+            block_start: 0,
+            block_count: 1,
+            global_hash: [0xBB; 32],
+        };
+        let block = BlockEntry {
+            compressed: false,
+            payload: (0u8..50).collect(),
+        };
+        let symbol_bytes = encode_single_symbol(&header, std::slice::from_ref(&block), 5);
+        let decoded = decode_symbol(&symbol_bytes).unwrap();
+        assert_eq!(decoded.header.file_size, 50);
+        assert_eq!(decoded.blocks.len(), 1);
+        assert_eq!(decoded.blocks[0].as_ref().unwrap(), &block);
+    }
+
+    #[test]
+    fn bad_size_rejected() {
+        let bytes = vec![0u8; 100]; // not a multiple of 255
+        assert!(matches!(
+            decode_symbol(&bytes),
+            Err(SymbolError::BadSize { got: 100 })
+        ));
+    }
+
+    #[test]
+    fn empty_input_rejected() {
+        let bytes = vec![];
+        assert!(matches!(
+            decode_symbol(&bytes),
+            Err(SymbolError::BadSize { got: 0 })
+        ));
+    }
+
+    #[test]
+    fn too_large_rejected() {
+        // Buffer is a multiple of RS_N, but larger than MAX_SYMBOL_BYTES.
+        // MAX_K * RS_N <= MAX_SYMBOL_BYTES, so (MAX_K + 1) * RS_N exceeds it.
+        use crate::constants::MAX_K;
+        let bytes = vec![0u8; (MAX_K + 1) * RS_N];
+        assert!(matches!(
+            decode_symbol(&bytes),
+            Err(SymbolError::SymbolByteLengthTooLarge { .. })
+        ));
+    }
+}

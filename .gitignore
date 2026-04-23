@@ -24,6 +24,7 @@ fuzz/corpus/
 # AI artifacts
 .codex
 .claude
+.superpowers
 docs/superpowers
 
 # Mixed

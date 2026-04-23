@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">zioncode logo</title>
+  <desc id="desc">A mint and lime circular mountain mark inspired by the zioncode logo.</desc>
+  <defs>
+    <linearGradient id="zionGradient" x1="128" y1="42" x2="382" y2="454" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#92E7E5"/>
+      <stop offset="0.55" stop-color="#BDF4C5"/>
+      <stop offset="1" stop-color="#D7F88E"/>
+    </linearGradient>
+    <clipPath id="circleClip">
+      <circle cx="256" cy="256" r="212"/>
+    </clipPath>
+  </defs>
+
+  <rect width="512" height="512" fill="#030504"/>
+
+  <g clip-path="url(#circleClip)">
+    <path fill="url(#zionGradient)" d="M256 124 155 276 72 358c34 72 106 122 190 122 35 0 68-8 97-23l-81-84 94 23-84-157-17-75 29 78 27-38h31l34 81 53 55c14-27 22-58 22-90 0-106-86-193-193-193-74 0-139 42-171 103C136 91 192 45 256 45c116 0 211 95 211 211 0 41-12 79-32 111l-76-79-28-66v55l-31-74-28-1-16-78Z"/>
+  </g>
+
+  <path stroke="url(#zionGradient)" stroke-width="26" d="M256 58c-109 0-198 89-198 198s89 198 198 198c109 0 198-89 198-198S365 58 256 58Z"/>
+  <path stroke="url(#zionGradient)" stroke-width="5" d="M224 66c11-2 22-3 34-3 107 0 194 87 194 194 0 35-10 68-26 96"/>
+</svg>

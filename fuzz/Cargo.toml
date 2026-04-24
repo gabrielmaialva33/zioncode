@@ -10,6 +10,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 zion-codec = { path = "../zion-codec" }
+zion-stego = { path = "../zion-stego" }
 
 [[bin]]
 name = "decode_full"
@@ -28,6 +29,20 @@ bench = false
 [[bin]]
 name = "parse_block"
 path = "fuzz_targets/parse_block.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "stego_plaintext_header"
+path = "fuzz_targets/stego_plaintext_header.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "stego_extract"
+path = "fuzz_targets/stego_extract.rs"
 test = false
 doc = false
 bench = false

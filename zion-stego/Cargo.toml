@@ -11,6 +11,7 @@ argon2.workspace = true
 blake3.workspace = true
 chacha20poly1305.workspace = true
 rand_chacha.workspace = true
+rand_core = "0.10"
 zeroize.workspace = true
 png.workspace = true
 thiserror.workspace = true
@@ -19,4 +20,4 @@ uuid.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 hex-literal.workspace = true
-rand = "0.9"
+rand = "0.10.1"

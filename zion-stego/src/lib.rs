@@ -10,4 +10,5 @@ pub mod aead;
 pub mod constants;
 pub mod error;
 pub mod kdf;
+pub mod permutation;
 pub mod png_io;

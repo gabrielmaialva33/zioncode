@@ -33,6 +33,28 @@ impl Default for EmbedParams {
     }
 }
 
+impl EmbedParams {
+    #[must_use]
+    pub fn new(passphrase: impl Into<String>) -> Self {
+        Self {
+            passphrase: passphrase.into(),
+            ..Default::default()
+        }
+    }
+
+    #[must_use]
+    pub const fn with_density(mut self, density: EmbeddingDensity) -> Self {
+        self.density = density;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_zstd_level(mut self, zstd_level: i32) -> Self {
+        self.zstd_level = zstd_level;
+        self
+    }
+}
+
 /// Result of a full embed: one stego image per host, plus bookkeeping fields.
 #[derive(Debug)]
 pub struct EmbedOutput {
@@ -64,8 +86,8 @@ pub fn embed_file(
         return Err(EmbedError::NoHostImages);
     }
     for (i, img) in host_images.iter().enumerate() {
-        let expected = (img.width as usize) * (img.height as usize) * 3;
-        if img.rgb_data.len() != expected {
+        let expected = img.expected_rgb_len();
+        if !img.has_valid_shape() {
             return Err(EmbedError::InvalidHostImage {
                 index: i,
                 expected,
@@ -249,20 +271,14 @@ mod tests {
     #[test]
     fn empty_input_rejected() {
         let hosts = vec![make_host(256, 256)];
-        let params = EmbedParams {
-            passphrase: "x".into(),
-            ..Default::default()
-        };
+        let params = EmbedParams::new("x");
         let err = embed_file(&[], hosts, &params).unwrap_err();
         assert!(matches!(err, EmbedError::EmptyInput));
     }
 
     #[test]
     fn no_host_rejected() {
-        let params = EmbedParams {
-            passphrase: "x".into(),
-            ..Default::default()
-        };
+        let params = EmbedParams::new("x");
         let err = embed_file(b"hello", vec![], &params).unwrap_err();
         assert!(matches!(err, EmbedError::NoHostImages));
     }
@@ -274,10 +290,7 @@ mod tests {
             height: 10,
             rgb_data: vec![0u8; 5], // should be 300
         };
-        let params = EmbedParams {
-            passphrase: "x".into(),
-            ..Default::default()
-        };
+        let params = EmbedParams::new("x");
         let err = embed_file(b"payload", vec![bad], &params).unwrap_err();
         assert!(matches!(err, EmbedError::InvalidHostImage { .. }));
     }
@@ -286,10 +299,7 @@ mod tests {
     fn small_file_embeds_into_one_symbol() {
         // 1920×1080 host → K=1006 → 1 symbol carries plenty.
         let host = make_host(1920, 1080);
-        let params = EmbedParams {
-            passphrase: "light rain".into(),
-            ..Default::default()
-        };
+        let params = EmbedParams::new("light rain");
         let payload = b"bible content here";
         let out = embed_file(payload, vec![host.clone()], &params).unwrap();
         assert_eq!(out.stego_images.len(), 1);
@@ -297,5 +307,18 @@ mod tests {
         assert_eq!(out.hosts_provided, 1);
         assert_eq!(out.stego_images[0].width, host.width);
         assert_eq!(out.stego_images[0].height, host.height);
+    }
+
+    #[test]
+    fn custom_density_is_used_for_capacity() {
+        let host = make_host(512, 512);
+        let dense = EmbedParams::new("light rain");
+        let sparse =
+            EmbedParams::new("light rain").with_density(EmbeddingDensity::new(0.05).unwrap());
+
+        let dense_out = embed_file(b"payload", vec![host.clone()], &dense).unwrap();
+        let sparse_out = embed_file(b"payload", vec![host], &sparse).unwrap();
+
+        assert!(sparse_out.k_global < dense_out.k_global);
     }
 }

@@ -16,6 +16,36 @@ pub struct ExtractOutput {
     pub file_id: [u8; 16],
 }
 
+/// Public metadata stored in the passphrase-free plaintext stego header.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StegoMetadata {
+    pub width: u32,
+    pub height: u32,
+    pub file_id: [u8; 16],
+    pub k_global: u16,
+    pub symbol_index: u16,
+    pub total_symbols: u16,
+    pub ciphertext_len: u32,
+}
+
+/// Inspect a stego image's plaintext header without a passphrase.
+///
+/// # Errors
+/// Returns `ExtractError` if the image dimensions are inconsistent, the image
+/// is too small, or the plaintext header is invalid.
+pub fn inspect_stego_image(image: &RgbImage, index: usize) -> Result<StegoMetadata, ExtractError> {
+    let header = read_plaintext_header(image, index)?;
+    Ok(StegoMetadata {
+        width: image.width,
+        height: image.height,
+        file_id: header.file_id,
+        k_global: header.k_global,
+        symbol_index: header.symbol_index,
+        total_symbols: header.total_symbols,
+        ciphertext_len: header.ciphertext_len,
+    })
+}
+
 /// Extracts the original file from a set of stego images.
 ///
 /// # Errors
@@ -39,32 +69,7 @@ pub fn extract_file(
     // 1. Read plaintext header from each stego image (file_id + symbol_index).
     let mut headers: Vec<(usize, PlaintextHeader)> = Vec::with_capacity(stego_images.len());
     for (i, img) in stego_images.iter().enumerate() {
-        let expected = (img.width as usize) * (img.height as usize) * 3;
-        if img.rgb_data.len() != expected {
-            return Err(ExtractError::InvalidStegoImage {
-                index: i,
-                expected,
-                got: img.rgb_data.len(),
-            });
-        }
-        if img.rgb_data.len() < PLAINTEXT_HEADER_CHANNELS {
-            return Err(ExtractError::InvalidStegoImage {
-                index: i,
-                expected: PLAINTEXT_HEADER_CHANNELS,
-                got: img.rgb_data.len(),
-            });
-        }
-        let header_positions: Vec<u32> = (0..u32::try_from(PLAINTEXT_HEADER_CHANNELS)
-            .expect("PLAINTEXT_HEADER_CHANNELS fits u32"))
-            .collect();
-        let header_bits = extract_bits_at(&img.rgb_data, &header_positions);
-        let header_bytes_vec = bits_to_bytes(&header_bits);
-        let header_bytes: [u8; PLAINTEXT_HEADER_LEN] = header_bytes_vec
-            .as_slice()
-            .try_into()
-            .expect("256 bits = 32 bytes");
-        let h = PlaintextHeader::parse(&header_bytes, i)?;
-        headers.push((i, h));
+        headers.push((i, read_plaintext_header(img, i)?));
     }
 
     // 2. Consistency: all headers must share the same file_id.
@@ -124,6 +129,34 @@ pub fn extract_file(
     })
 }
 
+fn read_plaintext_header(image: &RgbImage, index: usize) -> Result<PlaintextHeader, ExtractError> {
+    let expected = image.expected_rgb_len();
+    if image.rgb_data.len() != expected {
+        return Err(ExtractError::InvalidStegoImage {
+            index,
+            expected,
+            got: image.rgb_data.len(),
+        });
+    }
+    if image.rgb_data.len() < PLAINTEXT_HEADER_CHANNELS {
+        return Err(ExtractError::InvalidStegoImage {
+            index,
+            expected: PLAINTEXT_HEADER_CHANNELS,
+            got: image.rgb_data.len(),
+        });
+    }
+    let header_positions: Vec<u32> = (0..u32::try_from(PLAINTEXT_HEADER_CHANNELS)
+        .expect("PLAINTEXT_HEADER_CHANNELS fits u32"))
+        .collect();
+    let header_bits = extract_bits_at(&image.rgb_data, &header_positions);
+    let header_bytes_vec = bits_to_bytes(&header_bits);
+    let header_bytes: [u8; PLAINTEXT_HEADER_LEN] = header_bytes_vec
+        .as_slice()
+        .try_into()
+        .expect("256 bits = 32 bytes");
+    PlaintextHeader::parse(&header_bytes, index)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,6 +186,25 @@ mod tests {
     fn empty_stego_list_rejected() {
         let err = extract_file(&[], "x").unwrap_err();
         assert!(matches!(err, ExtractError::NoStegoImages));
+    }
+
+    #[test]
+    fn inspect_reads_public_metadata() {
+        let host = make_host(512, 512, 17);
+        let params = EmbedParams {
+            passphrase: "light rain".into(),
+            ..Default::default()
+        };
+        let out = embed_file(b"payload", vec![host], &params).unwrap();
+        let metadata = inspect_stego_image(&out.stego_images[0], 0).unwrap();
+
+        assert_eq!(metadata.file_id, out.file_id);
+        assert_eq!(metadata.k_global, out.k_global);
+        assert_eq!(metadata.symbol_index, 0);
+        assert_eq!(
+            metadata.total_symbols,
+            u16::try_from(out.symbols_used).unwrap()
+        );
     }
 
     #[test]

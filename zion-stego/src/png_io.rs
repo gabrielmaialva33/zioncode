@@ -14,6 +14,18 @@ pub struct RgbImage {
     pub rgb_data: Vec<u8>,
 }
 
+impl RgbImage {
+    #[must_use]
+    pub const fn expected_rgb_len(&self) -> usize {
+        (self.width as usize) * (self.height as usize) * 3
+    }
+
+    #[must_use]
+    pub fn has_valid_shape(&self) -> bool {
+        self.rgb_data.len() == self.expected_rgb_len()
+    }
+}
+
 /// Reads a PNG and converts it to 8-bit RGB.
 ///
 /// # Errors
@@ -79,7 +91,7 @@ pub fn load_png_rgb<R: Read>(reader: R) -> Result<RgbImage, String> {
 /// # Errors
 /// Returns error if encoding fails.
 pub fn save_png_rgb<W: Write>(image: &RgbImage, writer: W) -> Result<(), String> {
-    let expected_len = (image.width as usize) * (image.height as usize) * 3;
+    let expected_len = image.expected_rgb_len();
     if image.rgb_data.len() != expected_len {
         return Err(format!(
             "rgb_data len {}, expected {}",

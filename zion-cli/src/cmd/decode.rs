@@ -94,15 +94,12 @@ mod tests {
 
         let encoded = encode_file(&raw, 38, ZSTD_LEVEL_DEFAULT).unwrap();
         let decoded = decode_symbol(&encoded.symbols[0]).unwrap();
-        let header = decoded.header.clone();
+        let header = decoded.metadata.to_header();
         let mut blocks: Vec<BlockEntry> = decoded.blocks.into_iter().map(Result::unwrap).collect();
         let expected_raw_size = u16::try_from(raw.len()).unwrap();
         let mut mutated = decode_block(&blocks[0], 0, expected_raw_size).unwrap();
         mutated[0] ^= 0xFF;
-        blocks[0] = BlockEntry {
-            compressed: false,
-            payload: mutated.clone(),
-        };
+        blocks[0] = BlockEntry::raw(mutated.clone()).unwrap();
         let corrupt_symbol = encode_single_symbol(&header, &blocks, 38);
 
         let symbol_path = temp_path("symbol");

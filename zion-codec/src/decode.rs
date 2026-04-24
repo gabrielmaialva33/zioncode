@@ -6,14 +6,72 @@ use crate::ecc::{
 };
 use crate::error::{BlockError, SymbolError};
 use crate::format::{BlockEntry, SymbolHeader};
+use crate::types::{FileId, GlobalHash};
+
+/// Public metadata for one decoded symbol.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SymbolMetadata {
+    pub ecc_profile: EccProfile,
+    pub file_id: FileId,
+    pub file_size: u64,
+    pub total_blocks: u32,
+    pub total_symbols: u16,
+    pub symbol_index: u16,
+    pub block_start: u32,
+    pub block_count: u16,
+    pub global_hash: GlobalHash,
+}
+
+impl SymbolMetadata {
+    fn from_header(header: &SymbolHeader, ecc_profile: EccProfile) -> Self {
+        Self {
+            ecc_profile,
+            file_id: header.file_id(),
+            file_size: header.file_size(),
+            total_blocks: header.total_blocks(),
+            total_symbols: header.total_symbols(),
+            symbol_index: header.symbol_index(),
+            block_start: header.block_start(),
+            block_count: header.block_count(),
+            global_hash: header.global_hash(),
+        }
+    }
+
+    #[must_use]
+    pub fn to_header(&self) -> SymbolHeader {
+        SymbolHeader::new_v1(
+            self.ecc_profile,
+            self.file_id,
+            self.file_size,
+            self.total_blocks,
+            self.total_symbols,
+            self.symbol_index,
+            self.block_start,
+            self.block_count,
+            self.global_hash,
+        )
+    }
+}
 
 /// Result of decoding one standalone symbol.
 #[derive(Debug)]
 pub struct DecodedSymbol {
-    pub header: SymbolHeader,
+    pub metadata: SymbolMetadata,
     /// Blocks that passed RS decoding, in order.
     /// Some may still fail at block level; see `block_failures`.
     pub blocks: Vec<Result<BlockEntry, BlockError>>,
+}
+
+impl DecodedSymbol {
+    #[must_use]
+    pub fn blocks_ok(&self) -> usize {
+        self.blocks.iter().filter(|result| result.is_ok()).count()
+    }
+
+    #[must_use]
+    pub fn blocks_error(&self) -> usize {
+        self.blocks.len().saturating_sub(self.blocks_ok())
+    }
 }
 
 /// Decode a full symbol from `symbol_bytes`.
@@ -135,25 +193,26 @@ fn decode_symbol_with_profile(
     }
 
     let (header, header_bytes_consumed) = SymbolHeader::parse(&pre_ecc)?;
-    if EccProfile::from_header_flags(header.flags) != Some(profile) {
+    if header.ecc_profile() != Some(profile) {
         return Ok(None);
     }
     if header
-        .block_start
-        .checked_add(u32::from(header.block_count))
+        .block_start()
+        .checked_add(u32::from(header.block_count()))
         .is_none()
     {
         return Err(SymbolError::BlockRangeOverflow {
-            block_start: header.block_start,
-            block_count: header.block_count,
+            block_start: header.block_start(),
+            block_count: header.block_count(),
         });
     }
 
+    let metadata = SymbolMetadata::from_header(&header, profile);
     let mut offset = header_bytes_consumed;
     let mut blocks: Vec<Result<BlockEntry, BlockError>> =
-        Vec::with_capacity(header.block_count as usize);
-    for i in 0..header.block_count {
-        let global_idx = header.block_start + u32::from(i);
+        Vec::with_capacity(metadata.block_count as usize);
+    for i in 0..metadata.block_count {
+        let global_idx = metadata.block_start + u32::from(i);
         if offset + BLOCK_HEADER_LEN > pre_ecc.len() {
             blocks.push(Err(BlockError::PayloadSizeTooLarge {
                 block_index: global_idx,
@@ -173,40 +232,35 @@ fn decode_symbol_with_profile(
         }
     }
 
-    Ok(Some(DecodedSymbol { header, blocks }))
+    Ok(Some(DecodedSymbol { metadata, blocks }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::HEADER_LEN_V1;
     use crate::encode::{encode_single_symbol, encode_single_symbol_with_profile};
+
+    fn sample_header(profile: EccProfile) -> SymbolHeader {
+        SymbolHeader::new_v1(
+            profile,
+            FileId::from_bytes([0xAA; 16]),
+            50,
+            1,
+            1,
+            0,
+            0,
+            1,
+            GlobalHash::from_bytes([0xBB; 32]),
+        )
+    }
 
     #[test]
     fn roundtrip_single_symbol() {
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "HEADER_LEN_V1 = 82 fits u8"
-        )]
-        let header = SymbolHeader {
-            header_len: HEADER_LEN_V1 as u8,
-            flags: 0,
-            file_id: [0xAA; 16],
-            file_size: 50,
-            total_blocks: 1,
-            total_symbols: 1,
-            symbol_index: 0,
-            block_start: 0,
-            block_count: 1,
-            global_hash: [0xBB; 32],
-        };
-        let block = BlockEntry {
-            compressed: false,
-            payload: (0u8..50).collect(),
-        };
+        let header = sample_header(EccProfile::Safe);
+        let block = BlockEntry::raw((0u8..50).collect()).unwrap();
         let symbol_bytes = encode_single_symbol(&header, std::slice::from_ref(&block), 5);
         let decoded = decode_symbol(&symbol_bytes).unwrap();
-        assert_eq!(decoded.header.file_size, 50);
+        assert_eq!(decoded.metadata.file_size, 50);
         assert_eq!(decoded.blocks.len(), 1);
         assert_eq!(decoded.blocks[0].as_ref().unwrap(), &block);
     }
@@ -243,22 +297,17 @@ mod tests {
 
     #[test]
     fn overflowing_block_range_is_rejected_without_panic() {
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "HEADER_LEN_V1 = 82 fits u8"
-        )]
-        let header = SymbolHeader {
-            header_len: HEADER_LEN_V1 as u8,
-            flags: 0,
-            file_id: [0xAA; 16],
-            file_size: 1,
-            total_blocks: u32::MAX,
-            total_symbols: 1,
-            symbol_index: 0,
-            block_start: u32::MAX,
-            block_count: 1,
-            global_hash: [0xBB; 32],
-        };
+        let header = SymbolHeader::new_v1(
+            EccProfile::Safe,
+            FileId::from_bytes([0xAA; 16]),
+            1,
+            u32::MAX,
+            1,
+            0,
+            u32::MAX,
+            1,
+            GlobalHash::from_bytes([0xBB; 32]),
+        );
 
         let symbol_bytes = encode_single_symbol(&header, &[], 1);
         assert!(matches!(
@@ -273,26 +322,8 @@ mod tests {
     #[test]
     fn decodes_all_ecc_profiles() {
         for profile in EccProfile::all() {
-            #[allow(
-                clippy::cast_possible_truncation,
-                reason = "HEADER_LEN_V1 = 82 fits u8"
-            )]
-            let header = SymbolHeader {
-                header_len: HEADER_LEN_V1 as u8,
-                flags: profile.header_flags(),
-                file_id: [0xAA; 16],
-                file_size: 50,
-                total_blocks: 1,
-                total_symbols: 1,
-                symbol_index: 0,
-                block_start: 0,
-                block_count: 1,
-                global_hash: [0xBB; 32],
-            };
-            let block = BlockEntry {
-                compressed: false,
-                payload: (0u8..50).collect(),
-            };
+            let header = sample_header(profile);
+            let block = BlockEntry::raw((0u8..50).collect()).unwrap();
             let symbol_bytes = encode_single_symbol_with_profile(
                 &header,
                 std::slice::from_ref(&block),
@@ -300,7 +331,7 @@ mod tests {
                 profile,
             );
             let decoded = decode_symbol(&symbol_bytes).unwrap();
-            assert_eq!(decoded.header.flags, profile.header_flags());
+            assert_eq!(decoded.metadata.ecc_profile, profile);
             assert_eq!(decoded.blocks[0].as_ref().unwrap(), &block);
         }
     }
@@ -308,26 +339,8 @@ mod tests {
     #[test]
     fn decodes_symbol_with_known_erasures() {
         for profile in EccProfile::all() {
-            #[allow(
-                clippy::cast_possible_truncation,
-                reason = "HEADER_LEN_V1 = 82 fits u8"
-            )]
-            let header = SymbolHeader {
-                header_len: HEADER_LEN_V1 as u8,
-                flags: profile.header_flags(),
-                file_id: [0xAA; 16],
-                file_size: 50,
-                total_blocks: 1,
-                total_symbols: 1,
-                symbol_index: 0,
-                block_start: 0,
-                block_count: 1,
-                global_hash: [0xBB; 32],
-            };
-            let block = BlockEntry {
-                compressed: false,
-                payload: (0u8..50).collect(),
-            };
+            let header = sample_header(profile);
+            let block = BlockEntry::raw((0u8..50).collect()).unwrap();
             let k = 5;
             let mut symbol_bytes = encode_single_symbol_with_profile(
                 &header,
@@ -342,7 +355,7 @@ mod tests {
             }
 
             let decoded = decode_symbol_with_erasures(&symbol_bytes, &erasures).unwrap();
-            assert_eq!(decoded.header.flags, profile.header_flags());
+            assert_eq!(decoded.metadata.ecc_profile, profile);
             assert_eq!(decoded.blocks[0].as_ref().unwrap(), &block);
         }
     }
@@ -362,26 +375,8 @@ mod tests {
 
     #[test]
     fn rejects_too_many_symbol_erasures_in_one_codeword() {
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "HEADER_LEN_V1 = 82 fits u8"
-        )]
-        let header = SymbolHeader {
-            header_len: HEADER_LEN_V1 as u8,
-            flags: EccProfile::Safe.header_flags(),
-            file_id: [0xAA; 16],
-            file_size: 50,
-            total_blocks: 1,
-            total_symbols: 1,
-            symbol_index: 0,
-            block_start: 0,
-            block_count: 1,
-            global_hash: [0xBB; 32],
-        };
-        let block = BlockEntry {
-            compressed: false,
-            payload: (0u8..50).collect(),
-        };
+        let header = sample_header(EccProfile::Safe);
+        let block = BlockEntry::raw((0u8..50).collect()).unwrap();
         let k = 5;
         let symbol_bytes = encode_single_symbol(&header, &[block], k);
         let erasures: Vec<usize> = (0..=EccProfile::Safe.parity_len()).map(|r| r * k).collect();

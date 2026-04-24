@@ -5,22 +5,112 @@ use crate::constants::{HEADER_LEN_V1, MAGIC, VERSION};
 use crate::crc::crc32c;
 use crate::ecc::EccProfile;
 use crate::error::SymbolError;
+use crate::types::{FileId, GlobalHash};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SymbolHeader {
-    pub header_len: u8,
-    pub flags: u16,
-    pub file_id: [u8; 16],
-    pub file_size: u64,
-    pub total_blocks: u32,
-    pub total_symbols: u16,
-    pub symbol_index: u16,
-    pub block_start: u32,
-    pub block_count: u16,
-    pub global_hash: [u8; 32],
+    header_len: u8,
+    flags: u16,
+    file_id: [u8; 16],
+    file_size: u64,
+    total_blocks: u32,
+    total_symbols: u16,
+    symbol_index: u16,
+    block_start: u32,
+    block_count: u16,
+    global_hash: [u8; 32],
 }
 
 impl SymbolHeader {
+    #[must_use]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "v1 header layout is fixed by the wire format fields"
+    )]
+    pub fn new_v1(
+        ecc_profile: EccProfile,
+        file_id: FileId,
+        file_size: u64,
+        total_blocks: u32,
+        total_symbols: u16,
+        symbol_index: u16,
+        block_start: u32,
+        block_count: u16,
+        global_hash: GlobalHash,
+    ) -> Self {
+        Self {
+            #[allow(
+                clippy::cast_possible_truncation,
+                reason = "HEADER_LEN_V1 is a fixed v1 constant = 82"
+            )]
+            header_len: HEADER_LEN_V1 as u8,
+            flags: ecc_profile.header_flags(),
+            file_id: file_id.to_bytes(),
+            file_size,
+            total_blocks,
+            total_symbols,
+            symbol_index,
+            block_start,
+            block_count,
+            global_hash: global_hash.to_bytes(),
+        }
+    }
+
+    #[must_use]
+    pub const fn header_len(&self) -> u8 {
+        self.header_len
+    }
+
+    #[must_use]
+    pub fn ecc_profile(&self) -> Option<EccProfile> {
+        EccProfile::from_header_flags(self.flags)
+    }
+
+    #[must_use]
+    pub const fn flags(&self) -> u16 {
+        self.flags
+    }
+
+    #[must_use]
+    pub const fn file_id(&self) -> FileId {
+        FileId::from_bytes(self.file_id)
+    }
+
+    #[must_use]
+    pub const fn file_size(&self) -> u64 {
+        self.file_size
+    }
+
+    #[must_use]
+    pub const fn total_blocks(&self) -> u32 {
+        self.total_blocks
+    }
+
+    #[must_use]
+    pub const fn total_symbols(&self) -> u16 {
+        self.total_symbols
+    }
+
+    #[must_use]
+    pub const fn symbol_index(&self) -> u16 {
+        self.symbol_index
+    }
+
+    #[must_use]
+    pub const fn block_start(&self) -> u32 {
+        self.block_start
+    }
+
+    #[must_use]
+    pub const fn block_count(&self) -> u16 {
+        self.block_count
+    }
+
+    #[must_use]
+    pub const fn global_hash(&self) -> GlobalHash {
+        GlobalHash::from_bytes(self.global_hash)
+    }
+
     /// Serialize to exactly 82 bytes (v1).
     ///
     /// # Panics
@@ -28,7 +118,21 @@ impl SymbolHeader {
     /// An inconsistent struct state is a caller bug.
     #[must_use]
     pub fn serialize_v1(&self) -> [u8; HEADER_LEN_V1] {
-        assert_eq!(self.header_len as usize, HEADER_LEN_V1);
+        self.try_serialize_v1()
+            .expect("caller must provide a valid v1 header")
+    }
+
+    /// Fallible variant of [`serialize_v1`](Self::serialize_v1).
+    ///
+    /// # Errors
+    /// Returns `SymbolError::HeaderLengthInvalid` if the header does not carry
+    /// the expected v1 length.
+    pub fn try_serialize_v1(&self) -> Result<[u8; HEADER_LEN_V1], SymbolError> {
+        if self.header_len as usize != HEADER_LEN_V1 {
+            return Err(SymbolError::HeaderLengthInvalid {
+                got: self.header_len,
+            });
+        }
         let mut out = [0u8; HEADER_LEN_V1];
 
         out[0..4].copy_from_slice(&MAGIC);
@@ -47,7 +151,7 @@ impl SymbolHeader {
         let crc = crc32c(&out[0..78]);
         out[78..82].copy_from_slice(&crc.to_le_bytes());
 
-        out
+        Ok(out)
     }
 
     /// Parse the initial bytes as a header. Consumes `header_len` total bytes.
@@ -139,23 +243,17 @@ mod tests {
     use super::*;
 
     fn sample_header() -> SymbolHeader {
-        SymbolHeader {
-            // HEADER_LEN_V1 == 82, which fits in u8 by definition in v1.
-            #[allow(
-                clippy::cast_possible_truncation,
-                reason = "HEADER_LEN_V1 is a const = 82 and fits in u8"
-            )]
-            header_len: HEADER_LEN_V1 as u8,
-            flags: 0,
-            file_id: [0xaa; 16],
-            file_size: 32768,
-            total_blocks: 4,
-            total_symbols: 1,
-            symbol_index: 0,
-            block_start: 0,
-            block_count: 4,
-            global_hash: [0xbb; 32],
-        }
+        SymbolHeader::new_v1(
+            EccProfile::Safe,
+            FileId::from_bytes([0xaa; 16]),
+            32768,
+            4,
+            1,
+            0,
+            0,
+            4,
+            GlobalHash::from_bytes([0xbb; 32]),
+        )
     }
 
     #[test]
@@ -218,7 +316,7 @@ mod tests {
         let crc = crc32c(&bytes[0..78]);
         bytes[78..82].copy_from_slice(&crc.to_le_bytes());
         let (parsed, _) = SymbolHeader::parse(&bytes).unwrap();
-        assert_eq!(parsed.flags, 1);
+        assert_eq!(parsed.flags(), 1);
     }
 
     #[test]
@@ -269,7 +367,7 @@ mod tests {
 
         let (parsed, consumed) = SymbolHeader::parse(&bytes).unwrap();
         assert_eq!(consumed, 90);
-        assert_eq!(parsed.header_len, 90);
-        assert_eq!(parsed.file_size, base.file_size);
+        assert_eq!(parsed.header_len(), 90);
+        assert_eq!(parsed.file_size(), base.file_size());
     }
 }

@@ -43,7 +43,7 @@ pub fn pack_blocks_into_symbols_with_profile(
     let mut next_block: u32 = 0;
 
     while (next_block as usize) < blocks.len() {
-        let block_cost = BLOCK_HEADER_LEN + blocks[next_block as usize].payload.len();
+        let block_cost = BLOCK_HEADER_LEN + blocks[next_block as usize].payload().len();
         let fits = current_size + block_cost <= available_capacity;
         let full = current_count as usize == TARGET_BLOCKS_PER_SYMBOL;
 

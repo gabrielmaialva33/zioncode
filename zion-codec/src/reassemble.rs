@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use crate::constants::{BLOCK_SIZE_RAW, MAX_BLOCK_COUNT, MAX_TOTAL_BLOCKS, MAX_TOTAL_SYMBOLS};
-use crate::decode::DecodedSymbol;
+use crate::decode::{DecodedSymbol, SymbolMetadata};
 use crate::error::FileError;
 use crate::format::BlockEntry;
 use crate::zstd_layer::decode_block;
@@ -65,8 +65,8 @@ impl FileReassembler {
     /// Duplicate symbols with the same `symbol_index` are treated as idempotent
     /// in v1 unless their payloads conflict.
     pub fn add_symbol(&mut self, decoded: DecodedSymbol) -> Result<(), FileError> {
-        let header = decoded.header.clone();
-        let hdr = &header;
+        let metadata = decoded.metadata.clone();
+        let hdr = &metadata;
 
         validate_header_invariants(hdr)?;
         if hdr.symbol_index >= hdr.total_symbols {
@@ -197,25 +197,22 @@ impl FileReassembler {
         })
     }
 
-    fn ensure_file_metadata(
-        &mut self,
-        header: &crate::format::SymbolHeader,
-    ) -> Result<(), FileError> {
+    fn ensure_file_metadata(&mut self, header: &SymbolMetadata) -> Result<(), FileError> {
         match self.metadata {
             None => {
                 self.metadata = Some(ReassemblyMetadata {
-                    file_id: header.file_id,
+                    file_id: header.file_id.to_bytes(),
                     file_size: header.file_size,
                     total_blocks: header.total_blocks,
                     total_symbols: header.total_symbols,
-                    global_hash: header.global_hash,
+                    global_hash: header.global_hash.to_bytes(),
                 });
             }
             Some(existing) => {
-                if existing.file_id != header.file_id {
+                if existing.file_id != header.file_id.to_bytes() {
                     return Err(FileError::SymbolFileIdMismatch {
                         expected: existing.file_id,
-                        got: header.file_id,
+                        got: header.file_id.to_bytes(),
                     });
                 }
                 if existing.file_size != header.file_size {
@@ -231,7 +228,7 @@ impl FileReassembler {
                         field: "total_symbols",
                     });
                 }
-                if existing.global_hash != header.global_hash {
+                if existing.global_hash != header.global_hash.to_bytes() {
                     return Err(FileError::InconsistentFileMetadata {
                         field: "global_hash",
                     });
@@ -321,7 +318,7 @@ impl FileReassembler {
     }
 }
 
-fn validate_header_invariants(header: &crate::format::SymbolHeader) -> Result<(), FileError> {
+fn validate_header_invariants(header: &SymbolMetadata) -> Result<(), FileError> {
     if header.file_size == 0 {
         return Err(FileError::InconsistentFileMetadata { field: "file_size" });
     }
@@ -351,7 +348,7 @@ fn normalize_symbol_blocks(
     file_size: u64,
     total_blocks: u32,
 ) -> Vec<Option<BlockEntry>> {
-    let header = decoded.header;
+    let header = decoded.metadata;
     let mut normalized = vec![None; usize::from(header.block_count)];
     for (i, block_result) in decoded.blocks.into_iter().enumerate() {
         if i >= normalized.len() {

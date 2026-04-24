@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Args as ClapArgs;
 use std::fs;
 use std::path::PathBuf;
-use zion_codec::{Decoder, EccProfile};
+use zion_codec::Decoder;
 
 #[derive(ClapArgs)]
 pub struct Args {
@@ -20,27 +20,25 @@ pub fn run(args: Args) -> Result<()> {
     let decoded = Decoder::default()
         .decode_symbol(&bytes)
         .with_context(|| format!("decode_symbol for {}", args.symbol.display()))?;
-    let h = &decoded.header;
+    let metadata = &decoded.metadata;
 
     println!("symbol            : {}", args.symbol.display());
     println!("bytes_transmitted : {}", bytes.len());
+    println!("ecc_profile       : {}", metadata.ecc_profile.name());
+    println!("file_id           : {}", metadata.file_id);
+    println!("file_size         : {}", metadata.file_size);
+    println!("total_blocks      : {}", metadata.total_blocks);
+    println!("total_symbols     : {}", metadata.total_symbols);
+    println!("symbol_index      : {}", metadata.symbol_index);
+    println!("block_start       : {}", metadata.block_start);
+    println!("block_count       : {}", metadata.block_count);
     println!(
-        "ecc_profile       : {}",
-        EccProfile::from_header_flags(h.flags)
-            .map(EccProfile::name)
-            .unwrap_or("unknown")
+        "global_hash       : {}",
+        hex::encode(metadata.global_hash.to_bytes())
     );
-    println!("file_id           : {}", uuid::Uuid::from_bytes(h.file_id));
-    println!("file_size         : {}", h.file_size);
-    println!("total_blocks      : {}", h.total_blocks);
-    println!("total_symbols     : {}", h.total_symbols);
-    println!("symbol_index      : {}", h.symbol_index);
-    println!("block_start       : {}", h.block_start);
-    println!("block_count       : {}", h.block_count);
-    println!("global_hash       : {}", hex::encode(h.global_hash));
 
-    let ok = decoded.blocks.iter().filter(|r| r.is_ok()).count();
-    let err = decoded.blocks.len() - ok;
+    let ok = decoded.blocks_ok();
+    let err = decoded.blocks_error();
     println!("blocks_ok         : {ok}");
     println!("blocks_error      : {err}");
     Ok(())

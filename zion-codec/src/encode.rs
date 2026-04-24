@@ -7,11 +7,9 @@ mod packing;
 pub use blocks::split_file_into_blocks;
 pub use packing::{SymbolPacking, pack_blocks_into_symbols, pack_blocks_into_symbols_with_profile};
 
-use crate::constants::{
-    BLOCK_SIZE_RAW, HEADER_LEN_V1, MAX_K, MAX_TOTAL_BLOCKS, MAX_TOTAL_SYMBOLS, RS_N,
-};
+use crate::constants::{BLOCK_SIZE_RAW, MAX_K, MAX_TOTAL_BLOCKS, MAX_TOTAL_SYMBOLS, RS_N};
 use crate::ecc::{EccProfile, interleave_column_major, try_rs_encode_codeword_with_profile};
-use crate::error::EncodeError;
+use crate::error::{BlockError, EncodeError, SymbolError};
 use crate::format::{BlockEntry, SymbolHeader};
 use crate::types::{FileId, GlobalHash, SymbolBytes};
 
@@ -76,9 +74,22 @@ pub fn try_encode_single_symbol_with_profile(
 
     let data_len = profile.data_len();
     let mut pre_ecc = Vec::with_capacity(k * data_len);
-    pre_ecc.extend_from_slice(&header.serialize_v1());
+    let header_bytes = header.try_serialize_v1().map_err(|err| match err {
+        SymbolError::HeaderLengthInvalid { got } => EncodeError::InvalidHeaderLength {
+            got,
+            expected: crate::constants::HEADER_LEN_V1,
+        },
+        other => unreachable!("unexpected header serialization error: {other:?}"),
+    })?;
+    pre_ecc.extend_from_slice(&header_bytes);
     for block in blocks {
-        pre_ecc.extend_from_slice(&block.serialize());
+        let block_bytes = block.try_serialize().map_err(|err| match err {
+            BlockError::PayloadSizeOutOfRange { got, max } => {
+                EncodeError::BlockPayloadTooLarge { got, max }
+            }
+            other => unreachable!("unexpected block serialization error: {other:?}"),
+        })?;
+        pre_ecc.extend_from_slice(&block_bytes);
     }
     let capacity = k * data_len;
     if pre_ecc.len() > capacity {
@@ -220,25 +231,20 @@ fn encode_prepared_blocks(
 
     let mut symbols = Vec::with_capacity(packings.len());
     for (idx, packing) in packings.iter().enumerate() {
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "HEADER_LEN_V1 = 82 fits u8; idx < total_symbols fits u16"
-        )]
-        let header = SymbolHeader {
-            header_len: HEADER_LEN_V1 as u8,
-            flags: profile.header_flags(),
-            file_id: file_id.to_bytes(),
-            file_size: raw_file.len() as u64,
+        let header = SymbolHeader::new_v1(
+            profile,
+            file_id,
+            raw_file.len() as u64,
             total_blocks,
             total_symbols,
-            symbol_index: u16::try_from(idx).map_err(|_| EncodeError::TooManySymbols {
+            u16::try_from(idx).map_err(|_| EncodeError::TooManySymbols {
                 got: packings.len(),
                 max: MAX_TOTAL_SYMBOLS,
             })?,
-            block_start: packing.block_start,
-            block_count: packing.block_count,
-            global_hash: global_hash.to_bytes(),
-        };
+            packing.block_start,
+            packing.block_count,
+            global_hash,
+        );
         let start = packing.block_start as usize;
         let end = start + packing.block_count as usize;
         let symbol_blocks = &blocks[start..end];
@@ -293,26 +299,18 @@ mod tests {
 
     #[test]
     fn output_length_is_k_times_n() {
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "HEADER_LEN_V1 = 82 fits u8"
-        )]
-        let header = SymbolHeader {
-            header_len: HEADER_LEN_V1 as u8,
-            flags: 0,
-            file_id: [0; 16],
-            file_size: 100,
-            total_blocks: 1,
-            total_symbols: 1,
-            symbol_index: 0,
-            block_start: 0,
-            block_count: 1,
-            global_hash: [0; 32],
-        };
-        let block = BlockEntry {
-            compressed: false,
-            payload: vec![0x55u8; 100],
-        };
+        let header = SymbolHeader::new_v1(
+            EccProfile::Safe,
+            FileId::from_bytes([0; 16]),
+            100,
+            1,
+            1,
+            0,
+            0,
+            1,
+            GlobalHash::from_bytes([0; 32]),
+        );
+        let block = BlockEntry::raw(vec![0x55u8; 100]).unwrap();
         let output = encode_single_symbol(&header, &[block], 10);
         assert_eq!(output.len(), 10 * 255);
     }
@@ -360,10 +358,7 @@ mod tests {
 
     #[test]
     fn dense_profile_uses_smaller_auto_symbol_than_safe_for_single_raw_block() {
-        let blocks = vec![BlockEntry {
-            compressed: false,
-            payload: vec![0x42; BLOCK_SIZE_RAW],
-        }];
+        let blocks = vec![BlockEntry::raw(vec![0x42; BLOCK_SIZE_RAW]).unwrap()];
         let safe_k = choose_auto_k_for_blocks(&blocks, EccProfile::Safe).unwrap();
         let dense_k = choose_auto_k_for_blocks(&blocks, EccProfile::Dense).unwrap();
         assert!(dense_k < safe_k);
@@ -417,17 +412,14 @@ mod pack_tests {
 
     fn blocks_of_size(n: usize, payload_size: usize) -> Vec<BlockEntry> {
         (0..n)
-            .map(|_| BlockEntry {
-                compressed: false,
-                payload: vec![0u8; payload_size],
-            })
+            .map(|_| BlockEntry::raw(vec![0u8; payload_size]).unwrap())
             .collect()
     }
 
     #[test]
     fn four_raw_blocks_fit_one_symbol() {
         let blocks = blocks_of_size(4, 8192);
-        // 82 + 4*(7+8192) = 32878. K=148 * 223 = 33004. Cabe.
+        // 82 + 4*(7+8192) = 32878. K=148 * 223 = 33004. Fits.
         let packings = pack_blocks_into_symbols(&blocks, 148).unwrap();
         assert_eq!(packings.len(), 1);
         assert_eq!(packings[0].block_count, 4);
@@ -435,9 +427,9 @@ mod pack_tests {
 
     #[test]
     fn splits_when_target_reached() {
-        let blocks = blocks_of_size(9, 100); // pequenos, sempre cabem
+        let blocks = blocks_of_size(9, 100); // Small blocks always fit.
         let packings = pack_blocks_into_symbols(&blocks, 148).unwrap();
-        // TARGET = 4 → 9 blocos = [4, 4, 1]
+        // TARGET = 4 -> 9 blocks = [4, 4, 1]
         assert_eq!(packings.len(), 3);
         assert_eq!(packings[0].block_count, 4);
         assert_eq!(packings[1].block_count, 4);

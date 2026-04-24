@@ -4,7 +4,7 @@
 //! (`flag.bit0 = 1`). Otherwise we fall back to raw (`flag.bit0 = 0`) to
 //! guarantee we never make the payload larger.
 //!
-//! Config do frame zstd: `contentSizeFlag = 0`, `checksumFlag = 0`,
+//! zstd frame config: `contentSizeFlag = 0`, `checksumFlag = 0`,
 //! `dictID = 0`. This trims ~5-12 bytes/block of frame overhead because:
 //! - contentSize: we already carry the payload size in the block header.
 //! - checksum: we already have CRC32C in the block header.
@@ -28,14 +28,18 @@ pub fn encode_block(raw: &[u8], level: i32, block_index: u32) -> Result<BlockEnt
         })?;
 
     if compressed.len() < raw.len() {
-        Ok(BlockEntry {
-            compressed: true,
-            payload: compressed,
+        BlockEntry::compressed(compressed).map_err(|err| match err {
+            BlockError::PayloadSizeOutOfRange { got, max } => {
+                EncodeError::BlockPayloadTooLarge { got, max }
+            }
+            other => unreachable!("unexpected block construction error: {other:?}"),
         })
     } else {
-        Ok(BlockEntry {
-            compressed: false,
-            payload: raw.to_vec(),
+        BlockEntry::raw(raw.to_vec()).map_err(|err| match err {
+            BlockError::PayloadSizeOutOfRange { got, max } => {
+                EncodeError::BlockPayloadTooLarge { got, max }
+            }
+            other => unreachable!("unexpected block construction error: {other:?}"),
         })
     }
 }
@@ -50,12 +54,12 @@ pub fn decode_block(
     block_index: u32,
     expected_raw_size: u16,
 ) -> Result<Vec<u8>, BlockError> {
-    if entry.compressed {
+    if entry.is_compressed() {
         #[allow(
             clippy::cast_possible_truncation,
             reason = "payload_size <= 8192 by parse invariant"
         )]
-        let compressed = entry.payload.len() as u16;
+        let compressed = entry.payload().len() as u16;
         if compressed >= expected_raw_size {
             return Err(BlockError::CompressedPayloadNotSmaller {
                 block_index,
@@ -65,7 +69,7 @@ pub fn decode_block(
         }
 
         let raw =
-            zstd_decompress(&entry.payload).map_err(|zstd_err| BlockError::ZstdDecodeFailed {
+            zstd_decompress(entry.payload()).map_err(|zstd_err| BlockError::ZstdDecodeFailed {
                 block_index,
                 zstd_err,
             })?;
@@ -87,7 +91,7 @@ pub fn decode_block(
             clippy::cast_possible_truncation,
             reason = "payload_size <= 8192 by parse invariant"
         )]
-        let got = entry.payload.len() as u16;
+        let got = entry.payload().len() as u16;
         if got != expected_raw_size {
             return Err(BlockError::RawBlockSizeMismatch {
                 block_index,
@@ -95,7 +99,7 @@ pub fn decode_block(
                 got,
             });
         }
-        Ok(entry.payload.clone())
+        Ok(entry.payload().to_vec())
     }
 }
 
@@ -134,8 +138,8 @@ mod tests {
     fn highly_compressible_picks_compressed() {
         let raw = vec![0u8; BLOCK_SIZE_RAW];
         let entry = encode_block(&raw, ZSTD_LEVEL_DEFAULT, 0).unwrap();
-        assert!(entry.compressed);
-        assert!(entry.payload.len() < raw.len());
+        assert!(entry.is_compressed());
+        assert!(entry.payload().len() < raw.len());
     }
 
     #[test]
@@ -145,8 +149,8 @@ mod tests {
         let mut raw = vec![0u8; BLOCK_SIZE_RAW];
         rng.fill_bytes(&mut raw);
         let entry = encode_block(&raw, ZSTD_LEVEL_DEFAULT, 0).unwrap();
-        assert!(!entry.compressed);
-        assert_eq!(entry.payload, raw);
+        assert!(!entry.is_compressed());
+        assert_eq!(entry.payload(), raw);
     }
 
     #[test]
@@ -167,10 +171,7 @@ mod tests {
 
     #[test]
     fn raw_block_size_mismatch_rejected() {
-        let entry = BlockEntry {
-            compressed: false,
-            payload: vec![0x55; 32],
-        };
+        let entry = BlockEntry::raw(vec![0x55; 32]).unwrap();
         assert!(matches!(
             decode_block(&entry, 7, 31),
             Err(BlockError::RawBlockSizeMismatch {
@@ -183,10 +184,7 @@ mod tests {
 
     #[test]
     fn compressed_payload_must_be_smaller_than_raw() {
-        let entry = BlockEntry {
-            compressed: true,
-            payload: vec![0xAA; 10],
-        };
+        let entry = BlockEntry::compressed(vec![0xAA; 10]).unwrap();
         assert!(matches!(
             decode_block(&entry, 3, 10),
             Err(BlockError::CompressedPayloadNotSmaller {

@@ -106,7 +106,7 @@ fn recaptured_symbol_can_fill_missing_blocks() {
     assert_eq!(encoded.symbols.len(), 1);
 
     let good = decode_symbol(&encoded.symbols[0]).unwrap();
-    let header = good.header.clone();
+    let header = good.metadata.to_header();
     let block = good.blocks[0].as_ref().unwrap().clone();
 
     let mut bad_block_bytes = block.serialize();
@@ -130,7 +130,7 @@ fn invalid_zero_length_file_metadata_is_rejected() {
         .encode(&raw)
         .unwrap();
     let mut decoded = decode_symbol(&encoded.symbols[0]).unwrap();
-    decoded.header.file_size = 0;
+    decoded.metadata.file_size = 0;
 
     let mut reasm = FileReassembler::new();
     let result = reasm.add_symbol(decoded);
@@ -167,11 +167,11 @@ fn overlapping_block_ranges_are_rejected() {
         .unwrap();
 
     let mut first = decode_symbol(&encoded.symbols[0]).unwrap();
-    first.header.total_symbols = 2;
+    first.metadata.total_symbols = 2;
 
     let mut overlapping = decode_symbol(&encoded.symbols[0]).unwrap();
-    overlapping.header.total_symbols = 2;
-    overlapping.header.symbol_index = 1;
+    overlapping.metadata.total_symbols = 2;
+    overlapping.metadata.symbol_index = 1;
 
     let mut reasm = FileReassembler::new();
     reasm.add_symbol(first).unwrap();

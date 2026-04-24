@@ -11,6 +11,7 @@ pub mod capacity;
 pub mod constants;
 pub mod embed;
 pub mod error;
+pub mod extract;
 pub mod kdf;
 pub mod lsb;
 pub mod permutation;

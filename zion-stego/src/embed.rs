@@ -75,12 +75,11 @@ pub fn embed_file(
 
     // 1. Compute K_global from host dimensions, density, and MAX_K clamp.
     let dims: Vec<(u32, u32)> = host_images.iter().map(|h| (h.width, h.height)).collect();
-    let k_global = compute_k_global(&dims, params.density).ok_or(
-        EmbedError::InsufficientCapacity {
+    let k_global =
+        compute_k_global(&dims, params.density).ok_or(EmbedError::InsufficientCapacity {
             needed: 0,
             available: 0,
-        },
-    )?;
+        })?;
 
     // 2. Invoke codec A with K_global.
     let encoded = zion_codec::low_level::encode_file(file_bytes, k_global, params.zstd_level)?;

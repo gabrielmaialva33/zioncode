@@ -8,3 +8,4 @@
 
 pub mod constants;
 pub mod error;
+pub mod png_io;

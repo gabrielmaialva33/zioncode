@@ -34,7 +34,7 @@ pub mod wire {
 
 /// Expert-facing low-level helpers for benchmarks, fuzzing, and forensics.
 pub mod low_level {
-    pub use crate::constants::{HEADER_LEN_V1, RS_K, RS_N, RS_PARITY};
+    pub use crate::constants::{HEADER_LEN_V1, MAX_K, RS_K, RS_N, RS_PARITY};
     pub use crate::ecc::{
         deinterleave_column_major, interleave_column_major, rs_decode_codeword,
         rs_decode_codeword_with_erasures, rs_decode_codeword_with_profile,

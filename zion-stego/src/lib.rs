@@ -13,4 +13,5 @@ pub mod error;
 pub mod kdf;
 pub mod lsb;
 pub mod permutation;
+pub mod plaintext_header;
 pub mod png_io;

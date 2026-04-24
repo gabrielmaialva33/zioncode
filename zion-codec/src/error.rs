@@ -40,6 +40,12 @@ pub enum EncodeError {
         got: usize,
         expected: usize,
     },
+
+    #[error("invalid header length for v1 serialization: got {got}, expected {expected}")]
+    InvalidHeaderLength { got: u8, expected: usize },
+
+    #[error("block payload exceeds v1 block limit: {got} > {max}")]
+    BlockPayloadTooLarge { got: usize, max: usize },
 }
 
 #[derive(Debug, Error)]
@@ -114,6 +120,9 @@ pub enum BlockError {
         raw_expected: u16,
         compressed: u16,
     },
+
+    #[error("block payload exceeds v1 block limit: {got} > {max}")]
+    PayloadSizeOutOfRange { got: usize, max: usize },
 }
 
 #[derive(Debug, Error)]

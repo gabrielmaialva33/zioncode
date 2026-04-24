@@ -1,23 +1,23 @@
-//! Wrapper mínimo sobre `png` 0.17 pra ler/escrever PNG em RGB 8-bit.
-//! Converte outros formatos (RGBA, grayscale) pra RGB conforme necessário.
+//! Minimal wrapper over `png` 0.17 for reading/writing PNG in 8-bit RGB.
+//! Converts other formats (RGBA, grayscale) to RGB as needed.
 
 use std::io::{Read, Write};
 
 use crate::error::{EmbedError, ExtractError};
 
-/// Imagem RGB 8-bit plana.
+/// Flat 8-bit RGB image.
 #[derive(Debug, Clone)]
 pub struct RgbImage {
     pub width: u32,
     pub height: u32,
-    /// `width * height * 3` bytes, row-major, cada pixel = (R, G, B).
+    /// `width * height * 3` bytes, row-major, each pixel = (R, G, B).
     pub rgb_data: Vec<u8>,
 }
 
-/// Lê um PNG e converte pra RGB 8-bit.
+/// Reads a PNG and converts it to 8-bit RGB.
 ///
 /// # Errors
-/// Retorna erro se o PNG for inválido ou se a conversão falhar.
+/// Returns error if the PNG is invalid or conversion fails.
 pub fn load_png_rgb<R: Read>(reader: R) -> Result<RgbImage, String> {
     let decoder = png::Decoder::new(reader);
     let mut reader = decoder.read_info().map_err(|e| e.to_string())?;
@@ -63,7 +63,7 @@ pub fn load_png_rgb<R: Read>(reader: R) -> Result<RgbImage, String> {
             rgb
         }
         other => {
-            return Err(format!("color_type não suportado: {other:?}"));
+            return Err(format!("unsupported color_type: {other:?}"));
         }
     };
 
@@ -74,10 +74,10 @@ pub fn load_png_rgb<R: Read>(reader: R) -> Result<RgbImage, String> {
     })
 }
 
-/// Escreve um PNG RGB 8-bit.
+/// Writes an 8-bit RGB PNG.
 ///
 /// # Errors
-/// Retorna erro se a encodificação falhar.
+/// Returns error if encoding fails.
 pub fn save_png_rgb<W: Write>(image: &RgbImage, writer: W) -> Result<(), String> {
     let expected_len = (image.width as usize) * (image.height as usize) * 3;
     if image.rgb_data.len() != expected_len {

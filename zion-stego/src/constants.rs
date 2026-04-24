@@ -1,55 +1,55 @@
-//! Constantes trancadas pela v1. Ver spec Appendix A.
+//! Constants frozen by v1. See spec Appendix A.
 
-/// Magic bytes no início do plaintext header.
+/// Magic bytes at the start of the plaintext header.
 pub const MAGIC: [u8; 4] = *b"ZSTG";
 
-/// Versão do formato v1.
+/// Format version v1.
 pub const VERSION: u8 = 0x01;
 
-/// Tamanho do plaintext header (32 bytes = 256 bits).
+/// Plaintext header size (32 bytes = 256 bits).
 pub const PLAINTEXT_HEADER_LEN: usize = 32;
 
-/// Número de canais row-major ocupados pelo plaintext header.
+/// Number of row-major channels occupied by the plaintext header.
 pub const PLAINTEXT_HEADER_CHANNELS: usize = 256;
 
-/// Argon2id: memória em KiB (64 MiB).
+/// Argon2id: memory in KiB (64 MiB).
 pub const ARGON2ID_MEMORY_KIB: u32 = 65_536;
 
-/// Argon2id: iterações.
+/// Argon2id: iterations.
 pub const ARGON2ID_ITERATIONS: u32 = 3;
 
-/// Argon2id: paralelismo.
+/// Argon2id: parallelism.
 pub const ARGON2ID_PARALLELISM: u32 = 4;
 
-/// Argon2id: tamanho de output em bytes.
+/// Argon2id: output length in bytes.
 pub const ARGON2ID_OUTPUT_LEN: usize = 32;
 
-/// Prefix do salt do Argon2id (concatena com `file_id` antes de BLAKE3).
+/// Argon2id salt prefix (concatenated with `file_id` before BLAKE3).
 pub const ARGON2ID_SALT_PREFIX: &str = "zioncode-stego-v1:salt-derivation";
 
-/// Context do `blake3::derive_key` para `aead_key`.
+/// `blake3::derive_key` context for `aead_key`.
 pub const KDF_AEAD_CONTEXT: &str = "zioncode-stego-v1 aead key v1";
 
-/// Context do `blake3::derive_key` para `permutation_seed` (per-símbolo).
+/// `blake3::derive_key` context for `permutation_seed` (per-symbol).
 pub const KDF_PERMUTATION_CONTEXT: &str = "zioncode-stego-v1 permutation seed v1";
 
-/// Context do `blake3::derive_key` para nonce (per-símbolo).
+/// `blake3::derive_key` context for nonce (per-symbol).
 pub const KDF_NONCE_CONTEXT: &str = "zioncode-stego-v1 nonce v1";
 
-/// `XChaCha20-Poly1305`: nonce em bytes.
+/// `XChaCha20-Poly1305`: nonce length in bytes.
 pub const AEAD_NONCE_LEN: usize = 24;
 
-/// `XChaCha20-Poly1305`: tag Poly1305 em bytes.
+/// `XChaCha20-Poly1305`: Poly1305 tag length in bytes.
 pub const AEAD_TAG_LEN: usize = 16;
 
-/// `XChaCha20-Poly1305`: chave em bytes.
+/// `XChaCha20-Poly1305`: key length in bytes.
 pub const AEAD_KEY_LEN: usize = 32;
 
-/// Density default (fração de canais permutáveis usados para embedding).
+/// Default density (fraction of permutable channels used for embedding).
 pub const EMBEDDING_DENSITY_DEFAULT: f32 = 0.33;
 
-/// Implementation limit do `zion-codec` (`MAX_SYMBOL_BYTES` / `RS_N`).
-/// `K_global` do B é clamped a esse teto.
+/// `zion-codec` implementation limit (`MAX_SYMBOL_BYTES` / `RS_N`).
+/// B's `K_global` is clamped to this ceiling.
 pub const ZION_CODEC_MAX_K: u16 = 4112;
 
 #[cfg(test)]

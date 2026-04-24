@@ -1,17 +1,17 @@
-//! Wrapper sobre XChaCha20-Poly1305 (crate chacha20poly1305).
-//! Ver spec §3 AEAD.
+//! Wrapper over XChaCha20-Poly1305 (chacha20poly1305 crate).
+//! See spec §3 AEAD.
 
 use chacha20poly1305::{
-    aead::{Aead, KeyInit},
     XChaCha20Poly1305, XNonce,
+    aead::{Aead, KeyInit},
 };
 
 use crate::constants::{AEAD_KEY_LEN, AEAD_NONCE_LEN, AEAD_TAG_LEN};
 
-/// Cifra `plaintext` retornando `plaintext || tag` (total = `plaintext.len()` + 16).
+/// Encrypts `plaintext` returning `ciphertext || tag` (total = `plaintext.len()` + 16).
 ///
 /// # Errors
-/// Retorna erro se o AEAD falhar (ex.: input muito grande).
+/// Returns error if AEAD fails (e.g. input too large).
 pub fn seal(
     key: &[u8; AEAD_KEY_LEN],
     nonce: &[u8; AEAD_NONCE_LEN],
@@ -22,10 +22,10 @@ pub fn seal(
     cipher.encrypt(xnonce, plaintext).map_err(|e| e.to_string())
 }
 
-/// Decifra `ciphertext || tag` retornando o plaintext, ou falha se o tag não bater.
+/// Decrypts `ciphertext || tag` returning the plaintext, or fails if the tag does not match.
 ///
 /// # Errors
-/// Retorna erro se o tag Poly1305 não autenticar.
+/// Returns error if the Poly1305 tag fails to authenticate.
 pub fn open(
     key: &[u8; AEAD_KEY_LEN],
     nonce: &[u8; AEAD_NONCE_LEN],
@@ -33,10 +33,12 @@ pub fn open(
 ) -> Result<Vec<u8>, String> {
     let cipher = XChaCha20Poly1305::new_from_slice(key).map_err(|e| e.to_string())?;
     let xnonce = XNonce::from_slice(nonce);
-    cipher.decrypt(xnonce, ciphertext).map_err(|e| e.to_string())
+    cipher
+        .decrypt(xnonce, ciphertext)
+        .map_err(|e| e.to_string())
 }
 
-/// Tamanho do ciphertext dado o plaintext.
+/// Ciphertext length given the plaintext length.
 #[must_use]
 pub const fn ciphertext_len(plaintext_len: usize) -> usize {
     plaintext_len + AEAD_TAG_LEN

@@ -1,16 +1,16 @@
 //! KDF: Argon2id (passphrase → `master_key`) + `blake3::derive_key` (`master_key` → sub-keys).
-//! Ver spec §3.
+//! See spec §3.
 
 use argon2::{Algorithm, Argon2, Params, Version};
 use zeroize::Zeroizing;
 
 use crate::constants::{
-    AEAD_KEY_LEN, AEAD_NONCE_LEN, ARGON2ID_ITERATIONS, ARGON2ID_MEMORY_KIB,
-    ARGON2ID_OUTPUT_LEN, ARGON2ID_PARALLELISM, ARGON2ID_SALT_PREFIX, KDF_AEAD_CONTEXT,
-    KDF_NONCE_CONTEXT, KDF_PERMUTATION_CONTEXT,
+    AEAD_KEY_LEN, AEAD_NONCE_LEN, ARGON2ID_ITERATIONS, ARGON2ID_MEMORY_KIB, ARGON2ID_OUTPUT_LEN,
+    ARGON2ID_PARALLELISM, ARGON2ID_SALT_PREFIX, KDF_AEAD_CONTEXT, KDF_NONCE_CONTEXT,
+    KDF_PERMUTATION_CONTEXT,
 };
 
-/// Deriva o salt do Argon2id a partir do `file_id`.
+/// Derives the Argon2id salt from the `file_id`.
 ///
 /// `salt = BLAKE3(SALT_PREFIX || file_id)[..16]`
 #[must_use]
@@ -24,10 +24,10 @@ pub fn derive_salt(file_id: &[u8; 16]) -> [u8; 16] {
     salt
 }
 
-/// Deriva a `master_key` via Argon2id (64 MiB, 3 iter, 4 parallel).
+/// Derives the `master_key` via Argon2id (64 MiB, 3 iter, 4 parallel).
 ///
 /// # Errors
-/// Retorna erro se o Argon2id falhar (params inválidos ou out-of-memory).
+/// Returns error if Argon2id fails (invalid params or out-of-memory).
 pub fn derive_master_key(
     passphrase: &[u8],
     file_id: &[u8; 16],
@@ -110,22 +110,22 @@ mod tests {
 
     #[test]
     fn master_key_deterministic() {
-        let m1 = derive_master_key(b"senha", &FILE_ID_A).unwrap();
-        let m2 = derive_master_key(b"senha", &FILE_ID_A).unwrap();
+        let m1 = derive_master_key(b"password", &FILE_ID_A).unwrap();
+        let m2 = derive_master_key(b"password", &FILE_ID_A).unwrap();
         assert_eq!(*m1, *m2);
     }
 
     #[test]
     fn master_key_changes_with_file_id() {
-        let m1 = derive_master_key(b"senha", &FILE_ID_A).unwrap();
-        let m2 = derive_master_key(b"senha", &FILE_ID_B).unwrap();
+        let m1 = derive_master_key(b"password", &FILE_ID_A).unwrap();
+        let m2 = derive_master_key(b"password", &FILE_ID_B).unwrap();
         assert_ne!(*m1, *m2);
     }
 
     #[test]
     fn master_key_changes_with_passphrase() {
-        let m1 = derive_master_key(b"senha1", &FILE_ID_A).unwrap();
-        let m2 = derive_master_key(b"senha2", &FILE_ID_A).unwrap();
+        let m1 = derive_master_key(b"password1", &FILE_ID_A).unwrap();
+        let m2 = derive_master_key(b"password2", &FILE_ID_A).unwrap();
         assert_ne!(*m1, *m2);
     }
 
@@ -158,8 +158,8 @@ mod tests {
         assert_ne!(n0, n1);
     }
 
-    /// Guardrail: os 3 contexts de domain separation são strings distintas.
-    /// Se alguém acidentalmente duplicar um context, esse teste quebra.
+    /// Guardrail: the 3 domain-separation contexts are distinct strings.
+    /// If someone accidentally duplicates a context, this test breaks.
     #[test]
     fn kdf_contexts_are_distinct() {
         assert_ne!(KDF_AEAD_CONTEXT, KDF_PERMUTATION_CONTEXT);

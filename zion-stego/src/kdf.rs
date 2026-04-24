@@ -42,7 +42,7 @@ pub fn derive_master_key(
     .map_err(|e| e.to_string())?;
 
     let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
-    let mut master = Zeroizing::new([0u8; 32]);
+    let mut master = Zeroizing::new([0u8; ARGON2ID_OUTPUT_LEN]);
     argon2
         .hash_password_into(passphrase, &salt, master.as_mut())
         .map_err(|e| e.to_string())?;
@@ -156,5 +156,14 @@ mod tests {
         let n0 = derive_nonce(&master, 0);
         let n1 = derive_nonce(&master, 1);
         assert_ne!(n0, n1);
+    }
+
+    /// Guardrail: os 3 contexts de domain separation são strings distintas.
+    /// Se alguém acidentalmente duplicar um context, esse teste quebra.
+    #[test]
+    fn kdf_contexts_are_distinct() {
+        assert_ne!(KDF_AEAD_CONTEXT, KDF_PERMUTATION_CONTEXT);
+        assert_ne!(KDF_AEAD_CONTEXT, KDF_NONCE_CONTEXT);
+        assert_ne!(KDF_PERMUTATION_CONTEXT, KDF_NONCE_CONTEXT);
     }
 }

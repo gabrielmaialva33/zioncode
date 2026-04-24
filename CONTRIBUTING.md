@@ -2,7 +2,8 @@
 
 ## Development Setup
 
-Install the Rust toolchain declared in `rust-toolchain.toml`. The workspace expects Rust `1.95.0` with `rustfmt` and `clippy`.
+Install the Rust toolchain declared in `rust-toolchain.toml`. The workspace expects Rust `1.95.0` with `rustfmt` and
+`clippy`.
 
 Build and test before opening a pull request:
 
@@ -34,7 +35,8 @@ cargo fuzz run parse_header
 - `format/` should contain wire-format parsing and serialization, not high-level orchestration.
 - `docs/superpowers/specs/` is the source of truth for format changes.
 
-Do not change the wire format, packing invariants, ECC layout, or compatibility behavior without updating the relevant spec or adding a focused design note.
+Do not change the wire format, packing invariants, ECC layout, or compatibility behavior without updating the relevant
+spec or adding a focused design note.
 
 ## Code Style
 

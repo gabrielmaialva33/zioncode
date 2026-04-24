@@ -2,7 +2,8 @@
 
 ## Our Standard
 
-This project expects direct, respectful, technical collaboration. Contributors should focus on evidence, reproducible behavior, and clear tradeoffs.
+This project expects direct, respectful, technical collaboration. Contributors should focus on evidence, reproducible
+behavior, and clear tradeoffs.
 
 Examples of expected behavior:
 
@@ -24,6 +25,9 @@ Examples of unacceptable behavior:
 
 Maintainers may remove comments, close issues, block users, or reject contributions that violate this code of conduct.
 
-If you need to report a problem, contact the maintainers through a private project channel when available. If no private channel is available, open a minimal public issue asking for a maintainer contact without including sensitive personal details.
+If you need to report a problem, contact the maintainers through a private project channel when available. If no private
+channel is available, open a minimal public issue asking for a maintainer contact without including sensitive personal
+details.
 
-Maintainers are expected to handle reports with appropriate confidentiality and to act proportionally to the severity and context of the behavior.
+Maintainers are expected to handle reports with appropriate confidentiality and to act proportionally to the severity
+and context of the behavior.

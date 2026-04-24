@@ -46,11 +46,15 @@
 
 ## 🎯 What is zioncode?
 
-`zioncode` is a Rust codec for **moving files through hostile offline channels** — think air-gapped machines, printed paper, camera capture, or any path where the bytes leaving origin are not the bytes arriving at destination.
+`zioncode` is a Rust codec for **moving files through hostile offline channels** — think air-gapped machines, printed
+paper, camera capture, or any path where the bytes leaving origin are not the bytes arriving at destination.
 
-The v1 repository ships **Subsystem A: the offline byte codec**. It turns a file into one or more self-contained `.zbin` symbols with compression, error-correction, interleaving, per-block and global integrity checks, and a typed reassembler that reports *which* blocks are missing instead of just failing.
+The v1 repository ships **Subsystem A: the offline byte codec**. It turns a file into one or more self-contained `.zbin`
+symbols with compression, error-correction, interleaving, per-block and global integrity checks, and a typed reassembler
+that reports *which* blocks are missing instead of just failing.
 
-Optical rendering (Subsystem B) and camera decoding (Subsystem C) are intentionally separate future layers — the codec is an independently deliverable unit.
+Optical rendering (Subsystem B) and camera decoding (Subsystem C) are intentionally separate future layers — the codec
+is an independently deliverable unit.
 
 ```text
 file bytes ─▶ zion-codec ─▶ .zbin symbols ─▶ [optical transport] ─▶ captured symbols ─▶ zion-codec ─▶ restored file
@@ -75,12 +79,14 @@ file bytes ─▶ zion-codec ─▶ .zbin symbols ─▶ [optical transport] ─
 ## 🧭 When to use it
 
 **✅ Good fit**
+
 - Air-gapped transfer between networkless machines
 - Transport over media that may corrupt, truncate, or duplicate bytes
 - Pipelines that need to report *why* something could not be recovered
 - Long-term archival where you want independent per-chunk integrity
 
 **❌ Not a fit**
+
 - Real-time streaming (this is a batch codec)
 - Encryption at rest — integrity ≠ confidentiality; layer a cipher on top if needed
 - Tiny payloads where ECC overhead dominates — you'll want a plain hash
@@ -140,7 +146,8 @@ cargo run -p zion-cli -- encode ./input.bin --output-prefix ./out/input
 # ▶ writes ./out/input_000.zbin, ./out/input_001.zbin, ...
 ```
 
-By default, the CLI chooses an automatic `K` that minimizes emitted bytes for the selected profile. Override with `--k` when a renderer needs a fixed physical symbol size.
+By default, the CLI chooses an automatic `K` that minimizes emitted bytes for the selected profile. Override with `--k`
+when a renderer needs a fixed physical symbol size.
 
 Profiles:
 
@@ -170,7 +177,8 @@ Prints the parsed header: ECC profile, file_id, symbol_index, block_start/count,
 cargo run -p zion-cli -- decode ./out/input_*.zbin --output ./restored.bin
 ```
 
-Symbols can be passed in **any order** — the reassembler sorts them via `symbol_index`. Use `--force-write-corrupt` only for forensic recovery when the global hash does not match.
+Symbols can be passed in **any order** — the reassembler sorts them via `symbol_index`. Use `--force-write-corrupt` only
+for forensic recovery when the global hash does not match.
 </details>
 
 <details>
@@ -184,6 +192,7 @@ let encoded = Encoder::new(config).encode(&file_bytes)?;
 let restored = Decoder::default().decode_file(&encoded.symbols)?;
 assert_eq!(restored, file_bytes);
 ```
+
 </details>
 
 ---
@@ -266,7 +275,9 @@ rustup run nightly cargo fuzz run parse_header  -- -max_total_time=30
 rustup run nightly cargo fuzz run parse_block   -- -max_total_time=30
 ```
 
-**Invariants pinned by property tests** — `output.len() == K * 255`, byte-identical roundtrip on clean streams, bounded corruption within ECC tolerance always recovers, duplicate symbols merge useful blocks, structural divergence is rejected.
+**Invariants pinned by property tests** — `output.len() == K * 255`, byte-identical roundtrip on clean streams, bounded
+corruption within ECC tolerance always recovers, duplicate symbols merge useful blocks, structural divergence is
+rejected.
 
 ---
 
@@ -278,15 +289,19 @@ The v1 binary format is **frozen** and lives in:
 docs/superpowers/specs/2026-04-23-zioncode-codec-offline-design.md
 ```
 
-Any change to the header layout, ECC parameters, interleaving, block packing, validation invariants, error semantics or compatibility rules must update the spec first and, when breaking, bump the version byte in the header.
+Any change to the header layout, ECC parameters, interleaving, block packing, validation invariants, error semantics or
+compatibility rules must update the spec first and, when breaking, bump the version byte in the header.
 
 ---
 
 ## 🤝 Contributing
 
-We follow the **superpowers workflow**: `brainstorming` → `writing-plans` → `subagent-driven-development`, one commit per logical step with **gitmoji-prefixed** subjects in English.
+We follow the **superpowers workflow**: `brainstorming` → `writing-plans` → `subagent-driven-development`, one commit
+per logical step with **gitmoji-prefixed** subjects in English.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full checklist (fmt, clippy, tests, fuzzing, PR template). Security-sensitive parser or decoder changes should include malformed-input coverage and, when relevant, fuzz target updates.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full checklist (fmt, clippy, tests, fuzzing, PR template).
+Security-sensitive parser or decoder changes should include malformed-input coverage and, when relevant, fuzz target
+updates.
 
 ---
 

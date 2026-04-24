@@ -1,5 +1,5 @@
 [workspace]
-members = ["zion-codec", "zion-cli"]
+members = ["zion-codec", "zion-cli", "zion-stego"]
 exclude = ["fuzz"]
 resolver = "3"
 
@@ -21,3 +21,9 @@ anyhow = "1"
 proptest = "1.5"
 criterion = { version = "0.8.2", features = ["html_reports"] }
 hex-literal = "1.1.0"
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+rand_chacha = "0.10"
+zeroize = { version = "1.8", features = ["derive"] }
+png = "0.17"
+rpassword = "7"

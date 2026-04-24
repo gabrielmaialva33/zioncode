@@ -1,0 +1,22 @@
+[package]
+name = "zion-stego"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+zion-codec = { path = "../zion-codec" }
+argon2.workspace = true
+blake3.workspace = true
+chacha20poly1305.workspace = true
+rand_chacha.workspace = true
+zeroize.workspace = true
+png.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+hex-literal.workspace = true
+rand = "0.9"

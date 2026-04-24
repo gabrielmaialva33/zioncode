@@ -54,6 +54,33 @@ pub fn extract_bits_at(data: &[u8], positions: &[u32]) -> Vec<u8> {
         .collect()
 }
 
+/// Converts a byte slice into a `Vec<u8>` where each entry is 0 or 1 (MSB-first per byte).
+#[must_use]
+pub fn bytes_to_bits(bytes: &[u8]) -> Vec<u8> {
+    let mut bits = Vec::with_capacity(bytes.len() * 8);
+    for &byte in bytes {
+        for shift in (0..8).rev() {
+            bits.push((byte >> shift) & 1);
+        }
+    }
+    bits
+}
+
+/// Converts bits (0/1) back into bytes (MSB-first).
+/// `bits.len()` must be a multiple of 8; trailing bits are ignored.
+#[must_use]
+pub fn bits_to_bytes(bits: &[u8]) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity(bits.len() / 8);
+    for chunk in bits.chunks_exact(8) {
+        let mut byte = 0u8;
+        for &bit in chunk {
+            byte = (byte << 1) | (bit & 1);
+        }
+        bytes.push(byte);
+    }
+    bytes
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,5 +123,33 @@ mod tests {
         assert_eq!(extract_lsb(1), 1);
         assert_eq!(extract_lsb(254), 0);
         assert_eq!(extract_lsb(255), 1);
+    }
+
+    #[test]
+    fn bytes_to_bits_msb_first() {
+        assert_eq!(bytes_to_bits(&[0b1010_1100]), vec![1, 0, 1, 0, 1, 1, 0, 0]);
+        assert_eq!(
+            bytes_to_bits(&[0, 0xFF]),
+            vec![0; 8].into_iter().chain(vec![1; 8]).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn bytes_bits_roundtrip() {
+        let bytes = vec![0x01, 0x42, 0xAB, 0xFF];
+        let bits = bytes_to_bits(&bytes);
+        assert_eq!(bits_to_bytes(&bits), bytes);
+    }
+
+    #[test]
+    fn embed_extract_roundtrip() {
+        let mut data = vec![100u8; 256];
+        let positions: Vec<u32> = (0..256).collect();
+        let payload: Vec<u8> = (0..32u8).map(|i| i.wrapping_mul(7)).collect();
+        let bits = bytes_to_bits(&payload);
+        assert_eq!(bits.len(), 256);
+        embed_bits_at(&mut data, &positions, &bits, &mut rng());
+        let recovered = extract_bits_at(&data, &positions);
+        assert_eq!(recovered, bits);
     }
 }

@@ -6,6 +6,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
+pub mod aead;
 pub mod constants;
 pub mod error;
 pub mod kdf;

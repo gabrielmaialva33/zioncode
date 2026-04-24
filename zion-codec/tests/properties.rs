@@ -1,8 +1,8 @@
 use proptest::prelude::*;
-use zion_codec::constants::{BLOCK_SIZE_RAW, HEADER_LEN_V1, RS_K};
-use zion_codec::decode::decode_symbol;
-use zion_codec::reassemble::FileReassembler;
-use zion_codec::{Decoder, Encoder, EncoderConfig};
+use zion_codec::{
+    BLOCK_SIZE_RAW, Decoder, Encoder, EncoderConfig, FileReassembler, decode_symbol,
+    low_level::{HEADER_LEN_V1, RS_K},
+};
 
 /// Compute the minimum K that can hold a file of `n` bytes in the worst case
 /// (one raw block up to 8192 bytes plus the v1 header).

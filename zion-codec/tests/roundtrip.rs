@@ -1,7 +1,8 @@
-use zion_codec::decode::decode_symbol;
-use zion_codec::ecc::{interleave_column_major, rs_encode_codeword};
-use zion_codec::reassemble::FileReassembler;
-use zion_codec::{Decoder, Encoder, EncoderConfig};
+use zion_codec::{
+    Decoder, Encoder, EncoderConfig, FileError, FileReassembler, decode_symbol,
+    low_level::{RS_K, interleave_column_major, rs_encode_codeword},
+    wire::SymbolHeader,
+};
 
 fn encode_decode_roundtrip(raw: &[u8], k: u16) {
     let encoded = Encoder::new(EncoderConfig::fixed_k(k).unwrap())
@@ -52,7 +53,7 @@ fn missing_symbol_reports_block_range() {
     reasm.add_symbol(decoded).unwrap();
 
     match reasm.finalize() {
-        Err(zion_codec::error::FileError::MissingBlocks { ranges }) => {
+        Err(FileError::MissingBlocks { ranges }) => {
             assert!(!ranges.is_empty());
         }
         other => panic!("expected MissingBlocks, got {other:?}"),
@@ -136,7 +137,7 @@ fn invalid_zero_length_file_metadata_is_rejected() {
     let result = reasm.add_symbol(decoded);
     assert!(matches!(
         result,
-        Err(zion_codec::error::FileError::InconsistentFileMetadata { field: "file_size" })
+        Err(FileError::InconsistentFileMetadata { field: "file_size" })
     ));
 }
 
@@ -155,7 +156,7 @@ fn mixed_file_ids_rejected() {
     let result = reasm.add_symbol(decode_symbol(&encoded_b.symbols[0]).unwrap());
     assert!(matches!(
         result,
-        Err(zion_codec::error::FileError::SymbolFileIdMismatch { .. })
+        Err(FileError::SymbolFileIdMismatch { .. })
     ));
 }
 
@@ -177,7 +178,7 @@ fn overlapping_block_ranges_are_rejected() {
     reasm.add_symbol(first).unwrap();
     assert!(matches!(
         reasm.add_symbol(overlapping),
-        Err(zion_codec::error::FileError::OverlappingBlockRange {
+        Err(FileError::OverlappingBlockRange {
             symbol_index: 1,
             block_index: 0,
         })
@@ -185,12 +186,10 @@ fn overlapping_block_ranges_are_rejected() {
 }
 
 fn build_symbol_with_raw_blocks(
-    header: &zion_codec::format::SymbolHeader,
+    header: &SymbolHeader,
     block_bytes: &[Vec<u8>],
     k: usize,
 ) -> Vec<u8> {
-    use zion_codec::constants::RS_K;
-
     let mut pre_ecc = Vec::with_capacity(k * RS_K);
     pre_ecc.extend_from_slice(&header.serialize_v1());
     for block in block_bytes {

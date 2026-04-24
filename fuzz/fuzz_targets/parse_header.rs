@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use zion_codec::format::SymbolHeader;
+use zion_codec::wire::SymbolHeader;
 
 fuzz_target!(|data: &[u8]| {
     // Header parser must never panic on any input.

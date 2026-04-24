@@ -71,11 +71,11 @@ pub fn run(args: Args) -> Result<()> {
 mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
-    use zion_codec::constants::ZSTD_LEVEL_DEFAULT;
-    use zion_codec::decode::decode_symbol;
-    use zion_codec::encode::{encode_file, encode_single_symbol};
-    use zion_codec::format::BlockEntry;
-    use zion_codec::zstd_layer::decode_block;
+    use zion_codec::{
+        ZSTD_LEVEL_DEFAULT, decode_symbol,
+        low_level::{decode_block, encode_file, encode_single_symbol},
+        wire::BlockEntry,
+    };
 
     fn temp_path(name: &str) -> PathBuf {
         let unique = SystemTime::now()

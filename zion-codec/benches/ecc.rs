@@ -1,7 +1,7 @@
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
-use zion_codec::constants::{RS_K, RS_N};
-use zion_codec::ecc::{
-    deinterleave_column_major, interleave_column_major, rs_decode_codeword, rs_encode_codeword,
+use zion_codec::low_level::{
+    RS_K, RS_N, deinterleave_column_major, interleave_column_major, rs_decode_codeword,
+    rs_encode_codeword,
 };
 
 fn bench_rs_encode(c: &mut Criterion) {

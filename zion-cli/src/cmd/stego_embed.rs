@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use clap::Args as ClapArgs;
 use std::fs;
 use std::path::PathBuf;
+use zion_stego::EmbeddingDensity;
 use zion_stego::constants::EMBEDDING_DENSITY_DEFAULT;
 use zion_stego::embed::{EmbedParams, embed_file};
 use zion_stego::png_io::{load_png_rgb, save_png_rgb};
@@ -64,7 +65,7 @@ pub fn run(args: Args) -> Result<()> {
 
     let params = EmbedParams {
         passphrase,
-        density: args.density,
+        density: EmbeddingDensity::new(args.density).context("invalid embedding density")?,
         zstd_level: args.zstd_level,
     };
     let out = embed_file(&file_bytes, hosts, &params)

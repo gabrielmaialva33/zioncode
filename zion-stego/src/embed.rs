@@ -7,18 +7,19 @@ use zeroize::Zeroizing;
 
 use crate::aead::seal;
 use crate::capacity::{ciphertext_bytes, compute_k_global};
-use crate::constants::{EMBEDDING_DENSITY_DEFAULT, PLAINTEXT_HEADER_CHANNELS};
+use crate::constants::PLAINTEXT_HEADER_CHANNELS;
 use crate::error::EmbedError;
 use crate::kdf::{derive_aead_key, derive_master_key, derive_nonce, derive_permutation_seed};
 use crate::lsb::{bytes_to_bits, embed_bits_at};
 use crate::permutation::permute_range;
 use crate::plaintext_header::PlaintextHeader;
 use crate::png_io::RgbImage;
+use crate::types::EmbeddingDensity;
 
 /// User-facing parameters for the embed pipeline.
 pub struct EmbedParams {
     pub passphrase: String,
-    pub density: f32,
+    pub density: EmbeddingDensity,
     pub zstd_level: i32,
 }
 
@@ -26,7 +27,7 @@ impl Default for EmbedParams {
     fn default() -> Self {
         Self {
             passphrase: String::new(),
-            density: EMBEDDING_DENSITY_DEFAULT,
+            density: EmbeddingDensity::default(),
             zstd_level: zion_codec::ZSTD_LEVEL_DEFAULT,
         }
     }

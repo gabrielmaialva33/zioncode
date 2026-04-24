@@ -20,6 +20,9 @@ pub enum EmbedError {
     #[error("insufficient capacity: needs {needed} bytes, available {available} across photos")]
     InsufficientCapacity { needed: usize, available: usize },
 
+    #[error("invalid embedding density: {got} (expected 0.0 < density <= 1.0)")]
+    InvalidDensity { got: f32 },
+
     #[error("Argon2id failed: {0}")]
     KdfFailed(String),
 

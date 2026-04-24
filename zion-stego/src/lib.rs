@@ -17,3 +17,6 @@ pub mod lsb;
 pub mod permutation;
 pub mod plaintext_header;
 pub mod png_io;
+pub mod types;
+
+pub use types::EmbeddingDensity;

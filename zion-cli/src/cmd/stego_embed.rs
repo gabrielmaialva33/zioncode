@@ -2,10 +2,10 @@ use anyhow::{Context, Result};
 use clap::Args as ClapArgs;
 use std::fs;
 use std::path::PathBuf;
-use zion_stego::EmbeddingDensity;
-use zion_stego::constants::EMBEDDING_DENSITY_DEFAULT;
-use zion_stego::embed::{EmbedParams, embed_file};
-use zion_stego::png_io::{load_png_rgb, save_png_rgb};
+use zion_stego::{
+    EMBEDDING_DENSITY_DEFAULT, EmbedParams, EmbeddingDensity, embed_file, load_png_rgb,
+    save_png_rgb,
+};
 
 #[derive(ClapArgs)]
 pub struct Args {

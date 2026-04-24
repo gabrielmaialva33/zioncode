@@ -2,8 +2,7 @@ use anyhow::{Context, Result};
 use clap::Args as ClapArgs;
 use std::fs;
 use std::path::PathBuf;
-use zion_stego::extract::extract_file;
-use zion_stego::png_io::load_png_rgb;
+use zion_stego::{extract_file, load_png_rgb};
 
 #[derive(ClapArgs)]
 pub struct Args {

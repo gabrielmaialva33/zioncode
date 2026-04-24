@@ -1,6 +1,4 @@
-use zion_stego::embed::{EmbedParams, embed_file};
-use zion_stego::extract::extract_file;
-use zion_stego::png_io::RgbImage;
+use zion_stego::{EmbedParams, ExtractError, RgbImage, embed_file, extract_file};
 
 fn make_host(w: u32, h: u32, seed: u64) -> RgbImage {
     let len = (w as usize) * (h as usize) * 3;
@@ -74,8 +72,5 @@ fn mixed_file_ids_detected() {
     // Using passphrase "a": the plaintext headers are read first and detect
     // that file_ids differ between the two images, before any decrypt attempt.
     let err = extract_file(&mixed, "a").unwrap_err();
-    assert!(matches!(
-        err,
-        zion_stego::error::ExtractError::InconsistentFileId
-    ));
+    assert!(matches!(err, ExtractError::InconsistentFileId));
 }

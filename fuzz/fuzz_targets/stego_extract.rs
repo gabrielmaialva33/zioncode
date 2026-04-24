@@ -1,8 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use zion_stego::extract::extract_file;
-use zion_stego::png_io::RgbImage;
+use zion_stego::{RgbImage, extract_file};
 
 fuzz_target!(|data: &[u8]| {
     // Fuzz the extract pipeline. Build a tiny RgbImage from the input and

@@ -1,8 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use zion_stego::constants::PLAINTEXT_HEADER_LEN;
-use zion_stego::plaintext_header::PlaintextHeader;
+use zion_stego::wire::{PLAINTEXT_HEADER_LEN, PlaintextHeader};
 
 fuzz_target!(|data: &[u8]| {
     // Fuzz the plaintext header parser with arbitrary bytes.

@@ -1,7 +1,5 @@
 use proptest::prelude::*;
-use zion_stego::embed::{EmbedParams, embed_file};
-use zion_stego::extract::extract_file;
-use zion_stego::png_io::RgbImage;
+use zion_stego::{EmbedParams, RgbImage, embed_file, extract_file};
 
 fn arb_host(size: usize) -> RgbImage {
     let len = size * size * 3;

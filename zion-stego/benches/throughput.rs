@@ -1,8 +1,5 @@
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
-use zion_stego::embed::{EmbedParams, embed_file};
-use zion_stego::extract::extract_file;
-use zion_stego::kdf::derive_master_key;
-use zion_stego::png_io::RgbImage;
+use zion_stego::{EmbedParams, RgbImage, embed_file, extract_file, low_level::derive_master_key};
 
 fn make_host(w: u32, h: u32) -> RgbImage {
     let len = (w as usize) * (h as usize) * 3;

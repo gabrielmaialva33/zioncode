@@ -8,4 +8,5 @@
 
 pub mod constants;
 pub mod error;
+pub mod kdf;
 pub mod png_io;

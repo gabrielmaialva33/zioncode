@@ -177,15 +177,11 @@ Symbols can be passed in **any order** — the reassembler sorts them via `symbo
 <summary><b>🧰 Use it as a library</b></summary>
 
 ```rust
-use zion_codec::{decode::decode_symbol, encode::encode_file, reassemble::FileReassembler};
+use zion_codec::{Decoder, Encoder, EncoderConfig};
 
-let encoded = encode_file(&file_bytes, /* k = */ 148, /* zstd_level = */ 6)?;
-
-let mut r = FileReassembler::new();
-for s in &encoded.symbols {
-    r.add_symbol(decode_symbol(s)?)?;
-}
-let restored = r.finalize()?;
+let config = EncoderConfig::fixed_k(148)?;
+let encoded = Encoder::new(config).encode(&file_bytes)?;
+let restored = Decoder::default().decode_file(&encoded.symbols)?;
 assert_eq!(restored, file_bytes);
 ```
 </details>

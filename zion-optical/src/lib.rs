@@ -11,12 +11,14 @@ mod error;
 mod layout;
 mod optical_header;
 mod pixel_io;
+mod render;
 
 pub use constants::{BYTES_PER_PIXEL, K_DEFAULT, MAX_PAYLOAD_BYTES_V1, ZSTD_LEVEL_DEFAULT};
 pub use error::{ExtractError, PngImageError, RenderError};
 pub use layout::{Dimensions, ImageShape, compute_dimensions};
 pub use optical_header::OpticalHeader;
 pub use pixel_io::{RgbImage, decode_png, encode_png, read_png, write_png};
+pub use render::{RenderOutput, RenderParams, render};
 
 /// Expert-facing wire constants and header codec.
 pub mod wire {

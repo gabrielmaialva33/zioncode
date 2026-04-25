@@ -1,7 +1,7 @@
-//! Minimal wrapper over `png` 0.17 for reading/writing PNG in 8-bit RGB.
+//! Minimal wrapper over `png` for reading/writing PNG in 8-bit RGB.
 //! Converts other formats (RGBA, grayscale) to RGB as needed.
 
-use std::io::{Read, Write};
+use std::io::{Cursor, Read, Write};
 
 use crate::error::{EmbedError, ExtractError};
 
@@ -31,9 +31,17 @@ impl RgbImage {
 /// # Errors
 /// Returns error if the PNG is invalid or conversion fails.
 pub fn load_png_rgb<R: Read>(reader: R) -> Result<RgbImage, String> {
-    let decoder = png::Decoder::new(reader);
+    let mut source = reader;
+    let mut png_bytes = Vec::new();
+    source
+        .read_to_end(&mut png_bytes)
+        .map_err(|e| e.to_string())?;
+    let decoder = png::Decoder::new(Cursor::new(png_bytes));
     let mut reader = decoder.read_info().map_err(|e| e.to_string())?;
-    let mut buf = vec![0u8; reader.output_buffer_size()];
+    let output_buffer_size = reader
+        .output_buffer_size()
+        .ok_or_else(|| "PNG output buffer size unavailable".to_string())?;
+    let mut buf = vec![0u8; output_buffer_size];
     let info = reader.next_frame(&mut buf).map_err(|e| e.to_string())?;
     buf.truncate(info.buffer_size());
 

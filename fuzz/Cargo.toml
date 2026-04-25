@@ -10,6 +10,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 zion-codec = { path = "../zion-codec" }
+zion-optical = { path = "../zion-optical" }
 zion-stego = { path = "../zion-stego" }
 
 [[bin]]
@@ -43,6 +44,13 @@ bench = false
 [[bin]]
 name = "stego_extract"
 path = "fuzz_targets/stego_extract.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "optical_extract"
+path = "fuzz_targets/optical_extract.rs"
 test = false
 doc = false
 bench = false

@@ -1694,6 +1694,7 @@ dependencies = [
  "rpassword",
  "uuid",
  "zion-codec",
+ "zion-optical",
  "zion-stego",
 ]
 
@@ -1718,6 +1719,7 @@ name = "zion-optical"
 version = "0.0.1"
 dependencies = [
  "crc32c",
+ "criterion",
  "hex-literal",
  "png",
  "proptest",

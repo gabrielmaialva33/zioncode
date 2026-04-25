@@ -24,6 +24,12 @@ enum Command {
     StegoExtract(cmd::stego_extract::Args),
     /// Show stego photo metadata (without passphrase).
     StegoInspect(cmd::stego_inspect::Args),
+    /// Render a file as a 1-image PNG container (RGB 24 bpp lossless).
+    OpticalRender(cmd::optical_render::Args),
+    /// Extract a file from a zion-optical PNG.
+    OpticalExtract(cmd::optical_extract::Args),
+    /// Show optical header metadata. Use --deep to also decode the first codec-A symbol.
+    OpticalInspect(cmd::optical_inspect::Args),
 }
 
 fn main() -> Result<()> {
@@ -35,5 +41,8 @@ fn main() -> Result<()> {
         Command::StegoEmbed(args) => cmd::stego_embed::run(args),
         Command::StegoExtract(args) => cmd::stego_extract::run(args),
         Command::StegoInspect(args) => cmd::stego_inspect::run(args),
+        Command::OpticalRender(args) => cmd::optical_render::run(args),
+        Command::OpticalExtract(args) => cmd::optical_extract::run(args),
+        Command::OpticalInspect(args) => cmd::optical_inspect::run(args),
     }
 }

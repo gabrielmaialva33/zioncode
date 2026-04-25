@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 zion-codec = { path = "../zion-codec" }
 zion-stego = { path = "../zion-stego" }
+zion-optical = { path = "../zion-optical" }
 clap.workspace = true
 anyhow.workspace = true
 uuid.workspace = true

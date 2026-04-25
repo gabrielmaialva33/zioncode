@@ -1,6 +1,9 @@
 pub mod decode;
 pub mod encode;
 pub mod inspect;
+pub mod optical_extract;
+pub mod optical_inspect;
+pub mod optical_render;
 pub mod stego_embed;
 pub mod stego_extract;
 pub mod stego_inspect;

@@ -1,0 +1,17 @@
+[package]
+name = "zion-optical"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+zion-codec = { path = "../zion-codec" }
+png.workspace = true
+crc32c.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+hex-literal.workspace = true

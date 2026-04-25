@@ -1714,6 +1714,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "zion-optical"
+version = "0.0.1"
+dependencies = [
+ "crc32c",
+ "hex-literal",
+ "png",
+ "proptest",
+ "thiserror",
+ "uuid",
+ "zion-codec",
+]
+
+[[package]]
 name = "zion-stego"
 version = "0.0.1"
 dependencies = [

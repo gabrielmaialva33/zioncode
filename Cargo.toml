@@ -1,5 +1,5 @@
 [workspace]
-members = ["zion-codec", "zion-cli", "zion-stego"]
+members = ["zion-codec", "zion-cli", "zion-stego", "zion-optical"]
 exclude = ["fuzz"]
 resolver = "3"
 

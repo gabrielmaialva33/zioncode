@@ -49,6 +49,6 @@ mod tests {
 
     #[test]
     fn k_default_matches_zion_codec_max_k() {
-        assert_eq!(K_DEFAULT as usize, zion_codec::low_level::MAX_K);
+        assert_eq!(usize::from(K_DEFAULT), zion_codec::low_level::MAX_K);
     }
 }

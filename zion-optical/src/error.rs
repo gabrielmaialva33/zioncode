@@ -45,6 +45,9 @@ pub enum RenderError {
     #[error("payload too large for u32 payload_len field: {got} bytes")]
     PayloadTooLargeForV1 { got: u64 },
 
+    #[error("too many symbols for v1 header: {got} symbols")]
+    TooManySymbols { got: usize },
+
     #[error("zion-codec encode error: {0}")]
     CodecError(#[from] zion_codec::EncodeError),
 
@@ -74,6 +77,12 @@ pub enum ExtractError {
 
     #[error("invalid optical header_len: got {got}, expected 24 in v1")]
     InvalidHeaderLen { got: u8 },
+
+    #[error("empty container: total_symbols is zero")]
+    EmptyContainer,
+
+    #[error("invalid optical k_global: got {got}")]
+    InvalidKGlobal { got: u16 },
 
     #[error(
         "inconsistent payload length: header declared {declared}, computed from k×total {computed}"

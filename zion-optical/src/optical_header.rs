@@ -112,6 +112,12 @@ impl OpticalHeader {
     }
 
     fn validate_payload_len(&self) -> Result<(), ExtractError> {
+        if self.k_global == 0 {
+            return Err(ExtractError::InvalidKGlobal { got: self.k_global });
+        }
+        if self.total_symbols == 0 {
+            return Err(ExtractError::EmptyContainer);
+        }
         let computed = u64::from(self.k_global)
             * u64::from(self.total_symbols)
             * zion_codec::low_level::RS_N as u64;
@@ -210,6 +216,36 @@ mod tests {
         assert!(matches!(
             OpticalHeader::parse(&bytes),
             Err(ExtractError::PaddingNotZero { offset: 12 })
+        ));
+    }
+
+    #[test]
+    fn empty_container_rejected() {
+        let h = OpticalHeader {
+            total_symbols: 0,
+            payload_len: 0,
+            ..sample()
+        };
+        let bytes = h.serialize_v1();
+
+        assert!(matches!(
+            OpticalHeader::parse(&bytes),
+            Err(ExtractError::EmptyContainer)
+        ));
+    }
+
+    #[test]
+    fn zero_k_rejected() {
+        let h = OpticalHeader {
+            k_global: 0,
+            payload_len: 0,
+            ..sample()
+        };
+        let bytes = h.serialize_v1();
+
+        assert!(matches!(
+            OpticalHeader::parse(&bytes),
+            Err(ExtractError::InvalidKGlobal { got: 0 })
         ));
     }
 

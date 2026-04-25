@@ -15,3 +15,8 @@ uuid.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 hex-literal.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "throughput"
+harness = false

@@ -8,9 +8,11 @@
 
 mod constants;
 mod error;
+mod pixel_io;
 
 pub use constants::{BYTES_PER_PIXEL, K_DEFAULT, MAX_PAYLOAD_BYTES_V1, ZSTD_LEVEL_DEFAULT};
 pub use error::{ExtractError, PngImageError, RenderError};
+pub use pixel_io::{RgbImage, decode_png, encode_png, read_png, write_png};
 
 /// Expert-facing wire constants.
 pub mod wire {

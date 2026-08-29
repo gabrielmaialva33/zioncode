@@ -83,6 +83,16 @@ mod tests {
             vec![
                 "zion",
                 "arc",
+                "corrupt-fixture",
+                "book.arc.png",
+                "--output",
+                "book.damaged.arc.png",
+                "--passphrase-file",
+                "passphrase.bin",
+            ],
+            vec![
+                "zion",
+                "arc",
                 "blivre",
                 "import",
                 "source.zip",

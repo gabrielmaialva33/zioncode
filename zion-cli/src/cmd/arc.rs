@@ -10,8 +10,8 @@ use anyhow::{Context, Result};
 use clap::{Args as ClapArgs, Subcommand, ValueEnum};
 use zeroize::Zeroizing;
 use zion_arc::{
-    Capacity, CollectionKey, EccProfile, ItemMetadata, SealConfig, capacity, open_png_bytes,
-    seal_png_bytes_with_collection_key,
+    Capacity, CollectionKey, EccProfile, ItemMetadata, SealConfig, capacity,
+    make_bounded_corruption_fixture, open_png_bytes, seal_png_bytes_with_collection_key,
 };
 use zion_corpus::{CorpusPackage, PINNED_ZIP_BYTES, import_pinned_blivre};
 
@@ -41,6 +41,8 @@ enum ArcCommand {
     Seal(SealArgs),
     /// Open one ARC PNG and write the authenticated content bytes.
     Open(OpenArgs),
+    /// Create a deliberately damaged fixture at the exact ECC correction bound.
+    CorruptFixture(CorruptFixtureArgs),
     /// Import, analyze, or seal the pinned BLIVRE 2018.2.0 corpus.
     Blivre(BlivreArgs),
 }
@@ -170,6 +172,17 @@ struct OpenArgs {
 }
 
 #[derive(ClapArgs)]
+struct CorruptFixtureArgs {
+    /// Authenticated ARC PNG to damage in bounded payload positions.
+    input: PathBuf,
+    /// New recoverable PNG fixture path; existing paths are refused.
+    #[arg(short = 'o', long)]
+    output: PathBuf,
+    #[command(flatten)]
+    passphrase: PassphraseArgs,
+}
+
+#[derive(ClapArgs)]
 struct BlivreImportArgs {
     /// Exact pinned usfm-blivre-tr.zip asset.
     source_zip: PathBuf,
@@ -232,6 +245,7 @@ pub fn run(args: Args) -> Result<()> {
         ArcCommand::Capacity(args) => run_capacity(args),
         ArcCommand::Seal(args) => run_seal(args),
         ArcCommand::Open(args) => run_open(args),
+        ArcCommand::CorruptFixture(args) => run_corrupt_fixture(args),
         ArcCommand::Blivre(args) => match args.command {
             BlivreCommand::Import(args) => run_blivre_import(args),
             BlivreCommand::Analyze(args) => run_blivre_analyze(args),
@@ -320,8 +334,8 @@ fn run_seal(args: SealArgs) -> Result<()> {
     let metadata = ItemMetadata::new(name, args.media_type, attribution);
     let passphrase = read_passphrase(&args.passphrase)?;
     let key_derivation_started = Instant::now();
-    let collection_key = CollectionKey::new(passphrase.as_slice())
-        .context("deriving ARC collection key")?;
+    let collection_key =
+        CollectionKey::new(passphrase.as_slice()).context("deriving ARC collection key")?;
     let key_derivation_wall_ms = key_derivation_started.elapsed().as_secs_f64() * 1_000.0;
     drop(passphrase);
     let sealed = seal_png_bytes_with_collection_key(
@@ -364,6 +378,27 @@ fn run_open(args: OpenArgs) -> Result<()> {
         profile_name(opened.profile),
         hex::encode(opened.collection_id),
         hex::encode(opened.capsule_id),
+    );
+    Ok(())
+}
+
+fn run_corrupt_fixture(args: CorruptFixtureArgs) -> Result<()> {
+    ensure_new_file_path(&args.output)?;
+    let input = read_bounded(&args.input, MAX_ARC_PNG_BYTES, "ARC PNG")?;
+    let passphrase = read_passphrase(&args.passphrase)?;
+    let fixture = make_bounded_corruption_fixture(&input, passphrase.as_slice())
+        .context("creating bounded ARC corruption fixture")?;
+    drop(passphrase);
+
+    write_new(&args.output, &fixture.png_bytes)?;
+    eprintln!(
+        "corruption fixture: {} (profile={}, codewords={}, corrupted_bytes_per_codeword={}, total_corrupted_payload_bytes={}, changed_channels={})",
+        args.output.display(),
+        profile_name(fixture.profile),
+        fixture.codeword_count,
+        fixture.corrupted_bytes_per_codeword,
+        fixture.total_corrupted_payload_bytes,
+        fixture.changed_channels,
     );
     Ok(())
 }

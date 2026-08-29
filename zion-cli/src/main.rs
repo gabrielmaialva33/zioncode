@@ -12,6 +12,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Seal, open, and package Zion ARC exact-PNG capsules.
+    Arc(cmd::arc::Args),
     /// Encode a file into `.zbin` symbols.
     Encode(cmd::encode::Args),
     /// Decode `.zbin` symbols back into a file.
@@ -35,6 +37,7 @@ enum Command {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Command::Arc(args) => cmd::arc::run(args),
         Command::Encode(args) => cmd::encode::run(args),
         Command::Decode(args) => cmd::decode::run(args),
         Command::Inspect(args) => cmd::inspect::run(args),
@@ -44,5 +47,98 @@ fn main() -> Result<()> {
         Command::OpticalRender(args) => cmd::optical_render::run(args),
         Command::OpticalExtract(args) => cmd::optical_extract::run(args),
         Command::OpticalInspect(args) => cmd::optical_inspect::run(args),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn arc_command_tree_parses_all_required_subcommands() {
+        for arguments in [
+            vec![
+                "zion", "arc", "capacity", "--width", "1080", "--height", "2340",
+            ],
+            vec![
+                "zion",
+                "arc",
+                "seal",
+                "book.json",
+                "cover.png",
+                "--output",
+                "book.arc.png",
+                "--passphrase-file",
+                "passphrase.bin",
+            ],
+            vec![
+                "zion",
+                "arc",
+                "open",
+                "book.arc.png",
+                "--output",
+                "book.json",
+                "--prompt",
+            ],
+            vec![
+                "zion",
+                "arc",
+                "blivre",
+                "import",
+                "source.zip",
+                "--output-dir",
+                "corpus",
+            ],
+            vec![
+                "zion",
+                "arc",
+                "blivre",
+                "analyze",
+                "source.zip",
+                "--width",
+                "1080",
+                "--height",
+                "2340",
+            ],
+            vec![
+                "zion",
+                "arc",
+                "blivre",
+                "seal-batch",
+                "source.zip",
+                "--covers-dir",
+                "covers",
+                "--output-dir",
+                "art",
+                "--passphrase-file",
+                "passphrase.bin",
+            ],
+        ] {
+            Cli::try_parse_from(arguments).expect("required ARC command must parse");
+        }
+    }
+
+    #[test]
+    fn arc_never_accepts_a_direct_passphrase_option() {
+        let result = Cli::try_parse_from([
+            "zion",
+            "arc",
+            "seal",
+            "book.json",
+            "cover.png",
+            "--output",
+            "book.arc.png",
+            "--passphrase",
+            "must-not-be-accepted",
+        ]);
+        let error = match result {
+            Ok(_) => panic!("a direct passphrase option must not exist"),
+            Err(error) => error,
+        };
+        assert!(
+            error
+                .to_string()
+                .contains("unexpected argument '--passphrase'")
+        );
     }
 }

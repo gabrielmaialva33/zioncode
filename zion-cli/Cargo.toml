@@ -13,8 +13,17 @@ path = "src/main.rs"
 zion-codec = { path = "../zion-codec" }
 zion-stego = { path = "../zion-stego" }
 zion-optical = { path = "../zion-optical" }
+zion-arc = { path = "../zion-arc" }
+zion-corpus = { path = "../zion-corpus" }
 clap.workspace = true
 anyhow.workspace = true
 uuid.workspace = true
 rpassword.workspace = true
+zeroize.workspace = true
+getrandom.workspace = true
+blake3.workspace = true
+rustix.workspace = true
 hex = "0.4"
+
+[dev-dependencies]
+sha2.workspace = true

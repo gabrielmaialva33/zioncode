@@ -1,5 +1,13 @@
 [workspace]
-members = ["zion-codec", "zion-cli", "zion-stego", "zion-optical"]
+members = [
+    "zion-codec",
+    "zion-cli",
+    "zion-stego",
+    "zion-optical",
+    "zion-arc",
+    "zion-corpus",
+    "zion-android",
+]
 exclude = ["fuzz"]
 resolver = "3"
 
@@ -8,6 +16,7 @@ version = "0.0.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/gabrielmaialva33/zioncode"
+rust-version = "1.95"
 
 [workspace.dependencies]
 zstd = "0.13"
@@ -27,3 +36,10 @@ rand_chacha = "0.10"
 zeroize = { version = "1.8", features = ["derive"] }
 png = "0.18.1"
 rpassword = "7"
+getrandom = "0.3"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+zip = { version = "6.0.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+rustix = { version = "1.1", features = ["fs"] }

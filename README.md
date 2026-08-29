@@ -49,15 +49,17 @@ Measured on the 1080×2340 RGB8 reference carrier:
 | Largest normalized book | Psalms, 657,274 JSON bytes |
 | Psalms after ARC zstd-6 | 123,349 bytes |
 | Psalms capsule | 556 codewords / 123,988 ciphertext bytes |
-| Fresh sealed artwork | 3,972,714 PNG bytes |
-| Lossless compression-level-0 encoding | 7,607,311 PNG bytes |
-| Sealed/re-encoded RGB identity | Exact, all 7,581,600 samples |
-| Clean/sealed image quality | 59.387568 dB PSNR / 0.998874 SSIM |
-| Both authenticated opens | Exact 657,274-byte JSON |
+| Three release-build sealed artworks | 3,672,542 / 3,972,476 / 4,172,242 PNG bytes |
+| Lossless compression-level-0 encodings | 7,607,311 PNG bytes each |
+| Sealed/re-encoded RGB identity | Exact for all three, 7,581,600 samples each |
+| Psalms clean/sealed image quality | 59.392145 dB PSNR / 0.998846 SSIM |
+| Six authenticated opens | Two byte-exact opens per artwork |
+| Safe-boundary corruption fixture | 556 × 16 = 8,896 repaired payload bytes/channels; exact authenticated open |
 
-The 3.97 MB and 7.61 MB files contain the same sealed RGB raster. PNG byte size
-is not ARC capacity: encoder filtering, compression, and ancillary chunks can
-change container bytes without changing dimensions or RGB identity.
+For Psalms, the 3.97 MB and 7.61 MB files contain the same sealed RGB raster.
+PNG byte size is not ARC capacity: encoder filtering, compression, and
+ancillary chunks can change container bytes without changing dimensions or RGB
+identity.
 
 Full evidence: [carrier-art report](docs/results/2026-08-29-carrier-art.md) and
 [66-book fit report](docs/results/2026-08-29-blivre-arc-fit.md).
@@ -119,11 +121,33 @@ cmp README.md "$ARC_DEMO/readme.opened.md"
 created as `0600`. A wrong passphrase returns a generic recovery failure and no
 partial plaintext.
 
+For a controlled test fixture at the selected profile's exact unknown-error
+boundary, damage a sealed capsule and authenticate its recovery:
+
+```bash
+./target/release/zion arc corrupt-fixture \
+  "$ARC_DEMO/readme.arc.png" \
+  --output "$ARC_DEMO/readme.bounded-damage.arc.png" \
+  --passphrase-file "$ARC_DEMO/passphrase.bin"
+
+./target/release/zion arc open \
+  "$ARC_DEMO/readme.bounded-damage.arc.png" \
+  --output "$ARC_DEMO/readme.repaired.md" \
+  --passphrase-file "$ARC_DEMO/passphrase.bin"
+
+cmp README.md "$ARC_DEMO/readme.repaired.md"
+```
+
+This purpose-built exact-RGB8 fixture measures the per-codeword ECC boundary;
+it is not evidence for JPEG, screenshots, resizing, print/camera, or arbitrary
+whole-image corruption.
+
 ### Reproduce the 5–9 MB artwork demo
 
-The carrier workflow accepts exactly one canonical book JSON, one owner-only
-passphrase file, one UTF-8 attribution file, one clean 1080×2340 RGB8 cover,
-and one new output directory:
+The carrier workflow accepts exactly one canonical book JSON from a materialized
+BLIVRE package, one owner-only passphrase file, the exact canonical attribution
+file, one clean 1080×2340 RGB8 cover, and one new output directory. It infers
+and requires the package's companion `manifest.json` next to `books/`:
 
 ```bash
 ZION_BIN="$PWD/target/release/zion" \
@@ -135,12 +159,24 @@ ZION_BIN="$PWD/target/release/zion" \
   /tmp/zion-psalms-art
 ```
 
-The script seals and opens, requires an exact plaintext comparison, re-encodes
-the sealed PNG losslessly with FFmpeg compression level 0 into the inclusive
-5,000,000–9,000,000-byte demonstration band, checks every RGB sample, opens and
-compares again, and computes hashes, channel deltas, PSNR, SSIM, and wall times.
-It never prints or hashes passphrase bytes. See the
-[carrier provenance](assets/carriers/README.md) and
+Before sealing, the script verifies the exact pinned 66-entry manifest and
+checked-in source mapping, selected payload and raw USFM identity, complete
+renderable `BookDocument`, and attribution. It seals and opens, requires an
+exact plaintext comparison, re-encodes the sealed PNG losslessly with FFmpeg
+compression level 0 into the inclusive 5,000,000–9,000,000-byte demonstration
+band, checks every RGB sample, opens and compares again, and computes only
+public carrier/stego hashes plus channel deltas, PSNR, SSIM, KDF time, and wall
+times. The original owner-only passphrase file is reopened, revalidated, and
+pinned through an inherited read-only descriptor only around each `zion`
+invocation; the script creates no passphrase snapshot or second secret file. On
+normal completion and trappable signals, plaintext metadata,
+fingerprints, recovered content, decoded RGB, and diagnostics are removed or
+suppressed. `SIGKILL` is untrappable, so an interrupted run can leave the
+original corpus plaintext and temporary recovered, decoded, or diagnostic files
+inside its private `0700` output boundary, but it still leaves no duplicated
+passphrase file. See the
+[carrier provenance](assets/carriers/README.md),
+[carrier rights notice](assets/carriers/LICENSE.md), and
 [coded metrics](docs/results/2026-08-29-carrier-art.md).
 
 ### Pinned BLIVRE corpus
@@ -165,7 +201,9 @@ The expected ZIP SHA-256 is
 `83e5435706b2d640d0b35b690b0cf0a4508d910dd26b895d155c37a670729ead`.
 BLIVRE content is attributed to Diego Santos, Mario Sérgio, and Marco Teles
 under CC BY 3.0 Brazil. The importer preserves byte-exact source USFM and
-records provenance separately from generated ARC output. See the
+performs the deterministic structured JSON projection. ARC receives those exact
+projected bytes and compresses them without interpreting scripture structure.
+The package records provenance separately from generated ARC output. See the
 [provenance record](docs/provenance/blivre-2018.2.0.md) and
 [repeatable CLI demo](docs/hackathon/2026-08-29-cli-demo.md).
 
@@ -190,16 +228,19 @@ The public 64-byte `ZARC` bootstrap makes capsule existence detectable and
 allows collection correlation. ARC authenticates that bootstrap and dimensions
 as associated data plus the encrypted envelope and recovered content. It does
 not authenticate the visible cover, the upper seven bits of RGB channels,
-unused channels, alpha, or PNG metadata. Changing unauthenticated presentation
-data can alter the picture without making open fail.
+unused RGB channels, alpha if present in an external noncanonical
+representation, or PNG metadata. Changing unauthenticated presentation data can
+alter the picture without making open fail.
 
 ARC has not been independently audited, formally verified, or externally
 validated for interoperability. It is not post-quantum and does not claim
 forensic invisibility or resistance to steganalysis. It does not promise
 survival through JPEG, resize, crop, screenshot, print, camera capture, color
-correction, or social-media recompression. Recovery requires the original
-dimensions and RGB8 samples in a valid lossless PNG. The software provides no
-legal authorization to bypass inspection or import rules.
+correction, or social-media recompression. The baseline lossless path preserves
+the original dimensions and RGB8 samples in a valid PNG; only controlled
+payload-byte errors within each codeword's published ECC bound have a recovery
+guarantee. The software provides no legal authorization to bypass inspection
+or import rules.
 
 The normative contract is the
 [ARC v1 specification and threat model](docs/specs/2026-08-29-zion-arc-v1.md).
@@ -208,10 +249,12 @@ The normative contract is the
 
 The Compose application imports one original PNG through
 `OpenDocument("image/png")`, performs bounded stream I/O, passes bytes—not a
-decoded `Bitmap`—through one JNI method, opens and validates one book off the UI
-thread, renders chapters, exposes BLIVRE attribution, and can export preserved
-raw USFM. It declares no internet permission, analytics, account, ads, database,
-or remote model.
+decoded `Bitmap`—through one JNI method, and opens one book off the UI thread.
+The Rust bridge structurally validates and canonically reserializes the
+authenticated `BookDocument` before Compose renders chapters or exports
+preserved raw USFM. That reader check establishes bounded schema/renderability,
+not membership in the pinned 66-book corpus. The app declares no internet
+permission, analytics, account, ads, database, or remote model.
 
 Install the pinned local Android toolchain and build:
 
@@ -333,9 +376,12 @@ do not describe the ARC parser as fuzz-complete yet.
 - [BLIVRE source and license provenance](docs/provenance/blivre-2018.2.0.md)
 - [BLIVRE all-book capacity evidence](docs/results/2026-08-29-blivre-arc-fit.md)
 - [Carrier artwork provenance](assets/carriers/README.md)
+- [Carrier artwork rights notice](assets/carriers/LICENSE.md)
 - [Carrier-art measurements](docs/results/2026-08-29-carrier-art.md)
 - [Desktop CLI demo](docs/hackathon/2026-08-29-cli-demo.md)
 - [Three-minute pitch and 90-second demo](docs/hackathon/2026-08-29-pitch.md)
+- [Five-minute hackathon demo and desktop fallback](docs/hackathon/demo-script.md)
+- [Hackathon pitch entrypoint](docs/hackathon/pitch.md)
 - [Android MVP build and limitations](docs/android/2026-08-29-android-mvp.md)
 
 ## Licensing
@@ -344,10 +390,12 @@ Workspace code is dual-licensed under Apache-2.0 or MIT; see
 [`LICENSE`](LICENSE), [`LICENSE-APACHE`](LICENSE-APACHE), and
 [`LICENSE-MIT`](LICENSE-MIT).
 
-That code license does not automatically cover BLIVRE content or generated
-carrier artwork. BLIVRE has its own CC BY 3.0 Brazil attribution and provenance.
-The carrier manifest records OpenAI image-generation provenance and makes no
-claim that the artwork is copyright-free or public domain.
+That code license does not cover BLIVRE content or the files under
+`assets/carriers/`. BLIVRE has its own CC BY 3.0 Brazil attribution and
+provenance. The carrier [manifest](assets/carriers/README.md) records OpenAI
+image-generation provenance; its separate [rights notice](assets/carriers/LICENSE.md)
+grants no downstream rights and makes no claim of copyrightability,
+exclusivity, non-infringement, copyright-free status, or public-domain status.
 
 ## Contributing
 

@@ -733,6 +733,11 @@ mod tests {
                 .zip(&fixture_image.rgb_data)
                 .all(|(left, right)| left.abs_diff(*right) <= 1)
         );
+
+        assert_eq!(
+            make_bounded_corruption_fixture(&sealed.png_bytes, b"wrong passphrase"),
+            Err(OpenError::RecoveryFailed)
+        );
     }
 
     #[test]

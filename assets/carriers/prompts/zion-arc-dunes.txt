@@ -1,0 +1,11 @@
+Use case: stylized-concept
+Asset type: second premium Android phone wallpaper and texture-rich steganographic carrier artwork for the Zion ARC hackathon demo collection
+Primary request: create a serene abstract desert landscape of flowing mineral dunes and wind-carved stone ribbons leading toward a small luminous horizon beneath a vast predawn sky; it must look like an ordinary sophisticated phone wallpaper
+Scene/backdrop: layered sandstone, fine granular dunes, distant misty ridges, subtle atmospheric particles and faint stars
+Style/medium: polished cinematic digital matte painting, elegant, believable, highly detailed, rich organic microtexture across the full frame
+Composition/framing: extra-tall portrait phone wallpaper, 9:19.5 aspect ratio, edge-to-edge, strong S-curve from the lower foreground to upper horizon, no important details near crop edges
+Lighting/mood: quiet, contemplative and hopeful; cool violet-blue predawn with restrained copper and rose-gold highlights
+Color palette: midnight blue, violet, muted mauve, sandstone copper, pale rose-gold
+Materials/textures: fine sand grains, stratified rock, soft mist, subtle natural grain and tonal variation; avoid large flat areas, visible banding, harsh noise, or repeated patterns
+Collection consistency: visually distinct from a river canyon while matching the same premium cinematic Zion ARC wallpaper family
+Constraints: no text, no letters, no numbers, no logo, no QR code, no UI, no frame, no watermark, no faces, no people, no books, no cross, no religious symbols; must read simply as beautiful abstract wallpaper; high visual complexity without looking noisy

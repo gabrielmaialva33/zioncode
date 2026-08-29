@@ -1,0 +1,11 @@
+Use case: stylized-concept
+Asset type: third premium Android phone wallpaper and texture-rich steganographic carrier artwork for the Zion ARC hackathon demo collection
+Primary request: create a tranquil abstract cloud-forest landscape with layered emerald terraces, delicate mist, and a narrow luminous trail winding upward toward a distant moonlit ridge; it must look like an ordinary sophisticated phone wallpaper
+Scene/backdrop: deep botanical valley, mossy stone terraces, fine foliage, drifting fog, faint rain particles and a distant cool horizon
+Style/medium: polished cinematic digital matte painting, elegant, believable, highly detailed, rich organic microtexture across the full frame
+Composition/framing: extra-tall portrait phone wallpaper, 9:19.5 aspect ratio, edge-to-edge, strong visual flow from lower foreground to upper distance, no important details near crop edges
+Lighting/mood: calm, restorative and discreet; blue-hour moonlight with restrained jade, cyan and soft amber bioluminescent accents
+Color palette: deep forest green, jade, petrol blue, muted cyan, charcoal, very subtle amber
+Materials/textures: intricate leaves, moss, wet rock, fine mist, water sheen and natural grain; avoid large flat areas, visible banding, harsh noise, or repeated patterns
+Collection consistency: visually distinct from river canyon and mineral desert while matching the same premium cinematic Zion ARC wallpaper family
+Constraints: no text, no letters, no numbers, no logo, no QR code, no UI, no frame, no watermark, no faces, no people, no books, no cross, no religious symbols; must read simply as beautiful abstract wallpaper; high visual complexity without looking noisy

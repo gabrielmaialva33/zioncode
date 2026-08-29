@@ -230,15 +230,10 @@ pub fn make_bounded_corruption_fixture(
                 .checked_mul(bootstrap.codeword_count)
                 .and_then(|offset| offset.checked_add(word))
                 .ok_or(OpenError::InvalidLength)?;
-            let bit_index = byte_index
-                .checked_mul(8)
-                .ok_or(OpenError::InvalidLength)?;
-            let channel_index = usize::try_from(
-                *positions
-                    .get(bit_index)
-                    .ok_or(OpenError::RecoveryFailed)?,
-            )
-            .map_err(|_| OpenError::RecoveryFailed)?;
+            let bit_index = byte_index.checked_mul(8).ok_or(OpenError::InvalidLength)?;
+            let channel_index =
+                usize::try_from(*positions.get(bit_index).ok_or(OpenError::RecoveryFailed)?)
+                    .map_err(|_| OpenError::RecoveryFailed)?;
             let channel = image
                 .rgb_data
                 .get_mut(channel_index)

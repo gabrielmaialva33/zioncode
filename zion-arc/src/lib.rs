@@ -19,8 +19,8 @@ mod types;
 mod zstd_ffi;
 
 pub use api::{
-    capacity, make_bounded_corruption_fixture, open_png_bytes,
-    open_png_bytes_with_collection_key, seal_png_bytes, seal_png_bytes_with_collection_key,
+    capacity, make_bounded_corruption_fixture, open_png_bytes, open_png_bytes_with_collection_key,
+    seal_png_bytes, seal_png_bytes_with_collection_key,
 };
 pub use error::{CollectionKeyError, OpenError, SealError};
 pub use kdf::CollectionKey;

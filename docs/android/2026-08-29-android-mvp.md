@@ -232,8 +232,49 @@ The complete format threat model and limits remain normative in
 
 ## Host validation record
 
-All results below were measured on 2026-08-29 from the dirty Phase 2/3 workspace
-without removing or overwriting unrelated work.
+All results below were measured on 2026-08-29 from the current dirty seven-crate
+workspace without removing or overwriting unrelated source work. The two Android
+assemblies used distinct fresh Cargo target directories and ran strictly
+sequentially against the shared generated JNI and Gradle output paths.
+
+These were the core build commands for each run; only `RUN_ROOT` changed from
+`/tmp/zion-android-fresh1.NtNnyG` to
+`/tmp/zion-android-fresh2.fGBJlk`:
+
+```bash
+REPO=/home/gabrielmaia/Projects/zioncode
+SDK_ROOT=/home/gabrielmaia/.local/share/android-sdk
+JNI_OUTPUT="$REPO/android/app/src/main/jniLibs"
+RUN_ROOT=/tmp/zion-android-fresh1.NtNnyG # fresh2.fGBJlk for run 2
+
+rm -f -- "$JNI_OUTPUT/arm64-v8a/libzion_android.so"
+CARGO_TARGET_DIR="$RUN_ROOT/cargo-target" \
+ANDROID_NDK_HOME="$SDK_ROOT/ndk/28.2.13676358" \
+ANDROID_NDK_ROOT="$SDK_ROOT/ndk/28.2.13676358" \
+cargo ndk --target arm64-v8a --platform 26 --output-dir "$JNI_OUTPUT" \
+  build --release --package zion-android
+
+mise exec 'java@temurin-17.0.20+101' -- env \
+  ANDROID_HOME="$SDK_ROOT" ANDROID_SDK_ROOT="$SDK_ROOT" \
+  "$REPO/android/gradlew" --project-dir "$REPO/android" \
+  --no-daemon --offline --no-build-cache --no-configuration-cache \
+  --dependency-verification strict --rerun-tasks \
+  clean :app:testDebugUnitTest :app:lint \
+  :app:assembleDebug :app:assembleRelease
+
+/usr/sbin/bsdtar -xOf \
+  "$RUN_ROOT/artifacts/app-release-unsigned.apk" \
+  lib/arm64-v8a/libzion_android.so \
+  >"$RUN_ROOT/artifacts/packaged-libzion_android.so"
+```
+
+The complete command output is retained only in
+`/tmp/zion-android-fresh1.NtNnyG/build.log` and
+`/tmp/zion-android-fresh2.fGBJlk/build.log`; each run's three JUnit XML files
+were copied beneath its private `/tmp` directory before the next `clean`. The
+first runner attempted unavailable `unzip` only after Cargo and Gradle had
+already succeeded. Its zero-byte extraction was removed and the installed
+`/usr/sbin/bsdtar` command above completed inspection without rebuilding.
 
 | Command | Result |
 |---|---|
@@ -243,14 +284,14 @@ without removing or overwriting unrelated work.
 | `cargo fmt --all -- --check` | PASS |
 | `cargo test --workspace` | PASS; includes seven `zion-android` roundtrip/contract/oracle/boundary/zeroization tests and the frozen ARC vector |
 | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | PASS |
-| cargo-ndk arm64 release build | PASS twice from separate fresh target directories; 6.05 s and 6.24 s, both including `zstd-sys` |
+| cargo-ndk arm64 release build | PASS twice from separate fresh target directories; 6.203 s and 6.436 s, both including `zstd-sys` |
 | `:app:testDebugUnitTest` | PASS; eight bounded-stream, UTF-8 password-limit, shared-contract, and generic parser-error tests |
 | `:app:lint` | PASS with warnings treated as errors |
 | `:app:assembleDebug` | PASS |
 | `:app:assembleRelease` | PASS; unsigned release |
-| clean complete `build-android.sh` run | PASS; fresh Rust target plus Gradle 21 s, 95 tasks |
-| second equivalent no-cache Gradle run | PASS; `--no-build-cache --rerun-tasks`, 22 s, all 95 tasks executed |
-| strict dependency verification | PASS; clean offline no-cache rebuild, all 96 tasks executed |
+| fresh build 1 | PASS; Cargo 6.203 s; Gradle 25.290 s wall time (`BUILD SUCCESSFUL in 24s`); 96/96 tasks executed; 8/8 JVM tests, zero failures/skips |
+| fresh build 2 | PASS; Cargo 6.436 s; Gradle 25.182 s wall time (`BUILD SUCCESSFUL in 24s`); 96/96 tasks executed; 8/8 JVM tests, zero failures/skips |
+| strict dependency verification | PASS in both clean, offline, no-build-cache, no-configuration-cache runs; every task was rerun |
 
 Lint intentionally disables only `AndroidGradlePluginVersion`,
 `GradleDependency`, and `ChromeOsAbiSupport`: the first two conflict with the
@@ -277,18 +318,22 @@ by the native zeroizer.
 
 ## Final artifact inspection
 
-| Artifact | Bytes | SHA-256 |
-|---|---:|---|
-| debug APK | 12,790,739 | `4e5e210fb093a31b4caf1e7f1733f623c492a459285c0e0bed15fc2254ca0c0e` |
-| unsigned release APK | 2,199,346 | `fbc5a9ced23ddb015d4a0646b634ebefd3e8c210ca77255df046e93a582a7788` |
-| cargo-ndk output `libzion_android.so` | 1,489,576 | `b4d67d8ea666c2d934ccbe5ad93c23dbd916ce42d7bbe9e5031be32688ba8d21` |
-| packaged stripped `libzion_android.so` | 1,083,472 | `5b480233c5ebf2ffb5719992bdef2a528217eb7964180bdf057bb4e2243270d7` |
+| Artifact | Run 1 bytes / SHA-256 | Run 2 bytes / SHA-256 |
+|---|---|---|
+| debug APK | 12,790,803 / `db658db6cee8afe9fe2fa104f0224acf6f64b9bf6749b4dc4f7fb414c88c7de9` | 12,790,803 / `db658db6cee8afe9fe2fa104f0224acf6f64b9bf6749b4dc4f7fb414c88c7de9` |
+| unsigned release APK | 2,199,410 / `ff305fc527c9218b2c9bdf81d13abc151c3e684f713aa42fb2d1c4f14e1491a1` | 2,199,410 / `ff305fc527c9218b2c9bdf81d13abc151c3e684f713aa42fb2d1c4f14e1491a1` |
+| cargo-ndk output `libzion_android.so` | 1,489,712 / `64299252658bb4538f07facdd45cf129dd904d89bce4c692c106ff8e093c116e` | 1,489,712 / `64299252658bb4538f07facdd45cf129dd904d89bce4c692c106ff8e093c116e` |
+| packaged stripped `libzion_android.so` | 1,083,536 / `28ba774a90c2f4db24c96ee4ccd452d72768b135e853fee353ab9a91f1223f8b` | 1,083,536 / `28ba774a90c2f4db24c96ee4ccd452d72768b135e853fee353ab9a91f1223f8b` |
 
-These four sizes and hashes were identical across two separate fresh Cargo
-target directories and two equivalent clean Android assemblies on this host;
-the second Gradle build disabled the build cache and reran all tasks. This is an
-observed same-host result for the pinned inputs, not a cross-host reproducible
-build guarantee.
+`cmp` and full SHA-256 comparison found all four artifacts byte-identical across
+the two separate fresh Cargo target directories and clean Android assemblies.
+Both Gradle builds disabled the build and configuration caches and reran every
+task. The earlier single-run debug-APK anchor of 13,879,215 bytes with SHA-256
+`7320e077f4c6954e6d8a9e1705b53883258bf8377171c946cefbdf4de8130d12`
+did not reproduce under this stricter procedure; the other three supplied
+anchors did. No cause is inferred from these measurements. The two matching
+runs are observed same-host reproducibility for the pinned inputs, not a
+cross-host reproducible-build guarantee.
 
 `file` identifies the cargo-ndk output as an ELF64 ARM aarch64 shared object for
 Android API 26, built by NDK r28c. `llvm-nm` finds exactly the intended JNI
@@ -296,7 +341,7 @@ export. The APK native entries are:
 
 ```text
 lib/arm64-v8a/libandroidx.graphics.path.so   10,096 bytes
-lib/arm64-v8a/libzion_android.so          1,083,472 bytes
+lib/arm64-v8a/libzion_android.so          1,083,536 bytes
 ```
 
 There is exactly one packaged `libzion_android.so`, and every native entry is

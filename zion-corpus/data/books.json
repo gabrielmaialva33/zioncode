@@ -1,0 +1,662 @@
+[
+  {
+    "ordinal": 1,
+    "id": "GEN",
+    "title": "Gênesis",
+    "source_file": "gen.txt",
+    "chapter_count": 50,
+    "verse_count": 1533,
+    "raw_bytes": 192368,
+    "raw_sha256": "19881fd4216c5c74a4a5fbf9de2b61054fbff8424c2ccbed5d7718e613367a23"
+  },
+  {
+    "ordinal": 2,
+    "id": "EXO",
+    "title": "Êxodo",
+    "source_file": "exod.txt",
+    "chapter_count": 40,
+    "verse_count": 1213,
+    "raw_bytes": 161065,
+    "raw_sha256": "c68ccb7cb76d5dc6009da5d6c92d21bd6eda66a7dd15b48d56854a00a00e1588"
+  },
+  {
+    "ordinal": 3,
+    "id": "LEV",
+    "title": "Levítico",
+    "source_file": "lev.txt",
+    "chapter_count": 27,
+    "verse_count": 859,
+    "raw_bytes": 118980,
+    "raw_sha256": "70ef7729061c697cdb1c98c648e94daafcde689c146269a53cde936f087cd511"
+  },
+  {
+    "ordinal": 4,
+    "id": "NUM",
+    "title": "Números",
+    "source_file": "num.txt",
+    "chapter_count": 36,
+    "verse_count": 1288,
+    "raw_bytes": 163902,
+    "raw_sha256": "596f638ea1e30fba99157cdec51eeceeeab51357baa2dafd2f0559ada4102a70"
+  },
+  {
+    "ordinal": 5,
+    "id": "DEU",
+    "title": "Deuteronômio",
+    "source_file": "deut.txt",
+    "chapter_count": 34,
+    "verse_count": 959,
+    "raw_bytes": 137272,
+    "raw_sha256": "e793ed555c6e140943a5fd2b9acc77e6faca1239a3c5d9766b4cfa42e0f49130"
+  },
+  {
+    "ordinal": 6,
+    "id": "JOS",
+    "title": "Josué",
+    "source_file": "jos.txt",
+    "chapter_count": 24,
+    "verse_count": 658,
+    "raw_bytes": 95150,
+    "raw_sha256": "6aac0a68399e566657e3fe86aacda2784e5b6cf503dd081b1a09cd7d9afb7e96"
+  },
+  {
+    "ordinal": 7,
+    "id": "JDG",
+    "title": "Juízes",
+    "source_file": "juiz.txt",
+    "chapter_count": 21,
+    "verse_count": 618,
+    "raw_bytes": 94786,
+    "raw_sha256": "4b212dc596c8ae3f1c3cb074d70b7921b8c79d53767d46c27f41d4c5ba98974d"
+  },
+  {
+    "ordinal": 8,
+    "id": "RUT",
+    "title": "Rute",
+    "source_file": "rute.txt",
+    "chapter_count": 4,
+    "verse_count": 85,
+    "raw_bytes": 12572,
+    "raw_sha256": "7abbfd8487499cce2063ef8d1bcc7dad2220f0d1f728f84500c8e2ff5e20a9c2"
+  },
+  {
+    "ordinal": 9,
+    "id": "1SA",
+    "title": "1 Samuel",
+    "source_file": "1sa.txt",
+    "chapter_count": 31,
+    "verse_count": 810,
+    "raw_bytes": 124864,
+    "raw_sha256": "818cb4310aaaca157e9d9333567f2aa971923abef226cf5df4d2cb02dd2e3f3d"
+  },
+  {
+    "ordinal": 10,
+    "id": "2SA",
+    "title": "2 Samuel",
+    "source_file": "2sa.txt",
+    "chapter_count": 24,
+    "verse_count": 695,
+    "raw_bytes": 102614,
+    "raw_sha256": "fe218ea06c84e3bd6ecb4c327214eea128eb10bb6ace8fee8eac09684f2cba49"
+  },
+  {
+    "ordinal": 11,
+    "id": "1KI",
+    "title": "1 Reis",
+    "source_file": "1rs.txt",
+    "chapter_count": 22,
+    "verse_count": 816,
+    "raw_bytes": 123841,
+    "raw_sha256": "5c26cd13466db5a40368f93c9ab9bd29cd258f44d2253160b51746bca0fcd82a"
+  },
+  {
+    "ordinal": 12,
+    "id": "2KI",
+    "title": "2 Reis",
+    "source_file": "2rs.txt",
+    "chapter_count": 25,
+    "verse_count": 719,
+    "raw_bytes": 115168,
+    "raw_sha256": "a1c528ad132e34407cd45e3403b3d7dc5cb99b3c9ac96871291e3deabaf64a33"
+  },
+  {
+    "ordinal": 13,
+    "id": "1CH",
+    "title": "1 Crônicas",
+    "source_file": "1crn.txt",
+    "chapter_count": 29,
+    "verse_count": 942,
+    "raw_bytes": 110842,
+    "raw_sha256": "6d981309737ceb3cb02cde434a35a1ec9014f7a090422d676c846dba92d7ce09"
+  },
+  {
+    "ordinal": 14,
+    "id": "2CH",
+    "title": "2 Crônicas",
+    "source_file": "2crn.txt",
+    "chapter_count": 36,
+    "verse_count": 822,
+    "raw_bytes": 133234,
+    "raw_sha256": "398609cec701777da9902926cd883c93d2c4210af06719a7a7b174445b51ace4"
+  },
+  {
+    "ordinal": 15,
+    "id": "EZR",
+    "title": "Esdras",
+    "source_file": "esd.txt",
+    "chapter_count": 10,
+    "verse_count": 280,
+    "raw_bytes": 40432,
+    "raw_sha256": "e1b9b1ad21e11f53b77147b3664d119605b4f159ea3f8d08be9cd49d77ff5a91"
+  },
+  {
+    "ordinal": 16,
+    "id": "NEH",
+    "title": "Neemias",
+    "source_file": "nee.txt",
+    "chapter_count": 13,
+    "verse_count": 406,
+    "raw_bytes": 57586,
+    "raw_sha256": "cacc22ba744e068d75bdbfa2aca76c30e0fb67e21923b872c7dbafd30bec6e5d"
+  },
+  {
+    "ordinal": 17,
+    "id": "EST",
+    "title": "Ester",
+    "source_file": "est.txt",
+    "chapter_count": 10,
+    "verse_count": 167,
+    "raw_bytes": 30737,
+    "raw_sha256": "7504b3f987c2d26d86a9736a7a6b2e9c1aa6b2f274530c18f3ccc6c6c7c37793"
+  },
+  {
+    "ordinal": 18,
+    "id": "JOB",
+    "title": "Jó",
+    "source_file": "jo.txt",
+    "chapter_count": 42,
+    "verse_count": 1070,
+    "raw_bytes": 107908,
+    "raw_sha256": "d7adf15f961cf72736170da72aeea9100118ab1f1e494bd8e7521731267efdf8"
+  },
+  {
+    "ordinal": 19,
+    "id": "PSA",
+    "title": "Salmos",
+    "source_file": "sal.txt",
+    "chapter_count": 150,
+    "verse_count": 2461,
+    "raw_bytes": 258558,
+    "raw_sha256": "c69ae3145a10551e9ec109e935e85f2f555a10d31afabc95a1fa1e47e277fe59"
+  },
+  {
+    "ordinal": 20,
+    "id": "PRO",
+    "title": "Provérbios",
+    "source_file": "prov.txt",
+    "chapter_count": 31,
+    "verse_count": 915,
+    "raw_bytes": 92167,
+    "raw_sha256": "919ef7523b321a6d7346327ff1795096fac7a458fe0b4fadb0101c4d1537e6b1"
+  },
+  {
+    "ordinal": 21,
+    "id": "ECC",
+    "title": "Eclesiastes",
+    "source_file": "ecl.txt",
+    "chapter_count": 12,
+    "verse_count": 222,
+    "raw_bytes": 32209,
+    "raw_sha256": "64362215532166f2d29b01580a9ccd4f72f810d891ae09f03278e6dca191ed0e"
+  },
+  {
+    "ordinal": 22,
+    "id": "SNG",
+    "title": "Cantares",
+    "source_file": "cant.txt",
+    "chapter_count": 8,
+    "verse_count": 117,
+    "raw_bytes": 16575,
+    "raw_sha256": "ad288864a06dbb080cb09e81f48a505a23921683f778f33251deef176a9c59ea"
+  },
+  {
+    "ordinal": 23,
+    "id": "ISA",
+    "title": "Isaías",
+    "source_file": "isa.txt",
+    "chapter_count": 66,
+    "verse_count": 1292,
+    "raw_bytes": 211286,
+    "raw_sha256": "7e6adb599baae316fc2a9f36a6a211518ec7b7dd753ccf86776df1f4e99c2bd9"
+  },
+  {
+    "ordinal": 24,
+    "id": "JER",
+    "title": "Jeremias",
+    "source_file": "jer.txt",
+    "chapter_count": 52,
+    "verse_count": 1364,
+    "raw_bytes": 232104,
+    "raw_sha256": "3dfdf1686e856f88a4defa0422ccd327a62e7e955c56bc6453e8887648e629f8"
+  },
+  {
+    "ordinal": 25,
+    "id": "LAM",
+    "title": "Lamentações",
+    "source_file": "lam.txt",
+    "chapter_count": 5,
+    "verse_count": 154,
+    "raw_bytes": 20102,
+    "raw_sha256": "1d7f2926688d07bac766860e8180ba7eff9d2412d33b7bcd10b312ae54e98ada"
+  },
+  {
+    "ordinal": 26,
+    "id": "EZK",
+    "title": "Ezequiel",
+    "source_file": "eze.txt",
+    "chapter_count": 48,
+    "verse_count": 1273,
+    "raw_bytes": 209454,
+    "raw_sha256": "710858b9be018a1b666b123b1ebdc1bd482a08a7e0d905663f9622400ef612ef"
+  },
+  {
+    "ordinal": 27,
+    "id": "DAN",
+    "title": "Daniel",
+    "source_file": "dan.txt",
+    "chapter_count": 12,
+    "verse_count": 357,
+    "raw_bytes": 63375,
+    "raw_sha256": "e1fefe2bcfbd2cdf5df5e9599cfefb5cbc1fcd11c567e13e14297c27ca05be53"
+  },
+  {
+    "ordinal": 28,
+    "id": "HOS",
+    "title": "Oseias",
+    "source_file": "ose.txt",
+    "chapter_count": 14,
+    "verse_count": 197,
+    "raw_bytes": 29343,
+    "raw_sha256": "18b77add55003b4feb4dd6813e16cd0aa7a024023f0007d6e4e92aef8c947f9d"
+  },
+  {
+    "ordinal": 29,
+    "id": "JOL",
+    "title": "Joel",
+    "source_file": "joel.txt",
+    "chapter_count": 3,
+    "verse_count": 73,
+    "raw_bytes": 11041,
+    "raw_sha256": "5c3bd84d6f4289a322b1855891d9295be731a83f160317f176033c3a0be12aaa"
+  },
+  {
+    "ordinal": 30,
+    "id": "AMO",
+    "title": "Amós",
+    "source_file": "amos.txt",
+    "chapter_count": 9,
+    "verse_count": 146,
+    "raw_bytes": 22575,
+    "raw_sha256": "078b7472f99eba1046086985e87e361466df7b95cccf864ebe4445ad0fe46f20"
+  },
+  {
+    "ordinal": 31,
+    "id": "OBA",
+    "title": "Obadias",
+    "source_file": "oba.txt",
+    "chapter_count": 1,
+    "verse_count": 21,
+    "raw_bytes": 3745,
+    "raw_sha256": "23e7e6ce8bbc15aabd58521a527696cc5b374a33babc5404ed2ca08718b6e504"
+  },
+  {
+    "ordinal": 32,
+    "id": "JON",
+    "title": "Jonas",
+    "source_file": "jon.txt",
+    "chapter_count": 4,
+    "verse_count": 48,
+    "raw_bytes": 7228,
+    "raw_sha256": "2327909fc14d3f07e1e6239215fc6b6f841fc56985ce490d6e5aceced06d23ab"
+  },
+  {
+    "ordinal": 33,
+    "id": "MIC",
+    "title": "Miqueias",
+    "source_file": "miq.txt",
+    "chapter_count": 7,
+    "verse_count": 105,
+    "raw_bytes": 17347,
+    "raw_sha256": "647c9b6fc716e09c69d6e9f8a4bd6b36dd61a31d23d85bff8c4ce7c76d8c40d5"
+  },
+  {
+    "ordinal": 34,
+    "id": "NAM",
+    "title": "Naum",
+    "source_file": "naum.txt",
+    "chapter_count": 3,
+    "verse_count": 47,
+    "raw_bytes": 7432,
+    "raw_sha256": "c0a519dc823b8e6ecd5954699849875f7a39f8875cafc1a895831ffc891b92df"
+  },
+  {
+    "ordinal": 35,
+    "id": "HAB",
+    "title": "Habacuque",
+    "source_file": "hab.txt",
+    "chapter_count": 3,
+    "verse_count": 56,
+    "raw_bytes": 8290,
+    "raw_sha256": "80cab0fa65c90e8de27469bf71a0405a6f6b18d58ebf0baca8f0f81ed613a664"
+  },
+  {
+    "ordinal": 36,
+    "id": "ZEP",
+    "title": "Sofonias",
+    "source_file": "sof.txt",
+    "chapter_count": 3,
+    "verse_count": 53,
+    "raw_bytes": 9018,
+    "raw_sha256": "5622bf6a736093d1e91a660a53daf7d86918fe6f90503f2a9f5732160195d5e0"
+  },
+  {
+    "ordinal": 37,
+    "id": "HAG",
+    "title": "Ageu",
+    "source_file": "ageu.txt",
+    "chapter_count": 2,
+    "verse_count": 38,
+    "raw_bytes": 6110,
+    "raw_sha256": "1601b4b7a7fc5353d95011806cef383ccf78bfe155f9f039469eeb36a2fe099a"
+  },
+  {
+    "ordinal": 38,
+    "id": "ZEC",
+    "title": "Zacarias",
+    "source_file": "zac.txt",
+    "chapter_count": 14,
+    "verse_count": 211,
+    "raw_bytes": 33305,
+    "raw_sha256": "9c54e9edd7eb84d2b914c6df3b7d0b48a3bf2265a9a7a08eef1003c0cbd82d9e"
+  },
+  {
+    "ordinal": 39,
+    "id": "MAL",
+    "title": "Malaquias",
+    "source_file": "mal.txt",
+    "chapter_count": 4,
+    "verse_count": 55,
+    "raw_bytes": 9787,
+    "raw_sha256": "a875206f44cc82f85cdbdb3799ffdf0583f14e808ccff8201d9bcf4140842e36"
+  },
+  {
+    "ordinal": 40,
+    "id": "MAT",
+    "title": "Mateus",
+    "source_file": "mat.txt",
+    "chapter_count": 28,
+    "verse_count": 1071,
+    "raw_bytes": 138528,
+    "raw_sha256": "a5f7aa24971101701190ce4e1b615958b96c6d03cbf5df8f9cd4ba7433860832"
+  },
+  {
+    "ordinal": 41,
+    "id": "MRK",
+    "title": "Marcos",
+    "source_file": "mar.txt",
+    "chapter_count": 16,
+    "verse_count": 678,
+    "raw_bytes": 82489,
+    "raw_sha256": "19f62046a2bbb2b2e177ae5f1d7ec4cdf9e9df84a88adbc91ced85cc33fd13d3"
+  },
+  {
+    "ordinal": 42,
+    "id": "LUK",
+    "title": "Lucas",
+    "source_file": "luc.txt",
+    "chapter_count": 24,
+    "verse_count": 1151,
+    "raw_bytes": 140735,
+    "raw_sha256": "46f6612d591de03d1d713d34700c25bc66235fb26d5dc0513dc0aba58a7a2174"
+  },
+  {
+    "ordinal": 43,
+    "id": "JHN",
+    "title": "João",
+    "source_file": "joao.txt",
+    "chapter_count": 21,
+    "verse_count": 879,
+    "raw_bytes": 101388,
+    "raw_sha256": "2ce7657af6a64c9b6067a1a40d64bd76e6774356ffa15a63aaa5d8d86b1eb54f"
+  },
+  {
+    "ordinal": 44,
+    "id": "ACT",
+    "title": "Atos",
+    "source_file": "atos.txt",
+    "chapter_count": 28,
+    "verse_count": 1007,
+    "raw_bytes": 142741,
+    "raw_sha256": "16cb43bf676067bb95b677059185715a036b4675a187816cd33a0243fb2f9abf"
+  },
+  {
+    "ordinal": 45,
+    "id": "ROM",
+    "title": "Romanos",
+    "source_file": "rom.txt",
+    "chapter_count": 16,
+    "verse_count": 433,
+    "raw_bytes": 60129,
+    "raw_sha256": "17a8c93205950f01b6bd25fc64ba8ef20c0f31a6fae06587f37cbadc9fb3440c"
+  },
+  {
+    "ordinal": 46,
+    "id": "1CO",
+    "title": "1 Coríntios",
+    "source_file": "1cor.txt",
+    "chapter_count": 16,
+    "verse_count": 437,
+    "raw_bytes": 55378,
+    "raw_sha256": "8a4e28f4ef0827de62b941cfcd8695c28707c845b48298e3db339044a9ac1367"
+  },
+  {
+    "ordinal": 47,
+    "id": "2CO",
+    "title": "2 Coríntios",
+    "source_file": "2cor.txt",
+    "chapter_count": 13,
+    "verse_count": 257,
+    "raw_bytes": 36759,
+    "raw_sha256": "a6213113b636a3e213e8b72107823b3be3f041131baa6383c8680079c1baecaf"
+  },
+  {
+    "ordinal": 48,
+    "id": "GAL",
+    "title": "Gálatas",
+    "source_file": "gal.txt",
+    "chapter_count": 6,
+    "verse_count": 149,
+    "raw_bytes": 19661,
+    "raw_sha256": "79e43a18f5a2442e5b5976f52439ef1d4c05778cbf16c481145f365a604da814"
+  },
+  {
+    "ordinal": 49,
+    "id": "EPH",
+    "title": "Efésios",
+    "source_file": "efes.txt",
+    "chapter_count": 6,
+    "verse_count": 155,
+    "raw_bytes": 19198,
+    "raw_sha256": "96b40f957d1bea7c06b725f9ba3c770efc8151044d68b269503eeb5407d5f602"
+  },
+  {
+    "ordinal": 50,
+    "id": "PHP",
+    "title": "Filipenses",
+    "source_file": "fil.txt",
+    "chapter_count": 4,
+    "verse_count": 104,
+    "raw_bytes": 13566,
+    "raw_sha256": "0d566fbf6c8416387b29a83f7c22a861bd7c1fa63f6b8f62794213c64ccdb111"
+  },
+  {
+    "ordinal": 51,
+    "id": "COL",
+    "title": "Colossenses",
+    "source_file": "col.txt",
+    "chapter_count": 4,
+    "verse_count": 95,
+    "raw_bytes": 13041,
+    "raw_sha256": "997b06bb672768a537515a5105a9d9c5fd36b6c7f0d567d7c01140fbc8fe9b67"
+  },
+  {
+    "ordinal": 52,
+    "id": "1TH",
+    "title": "1 Tessalonicenses",
+    "source_file": "1tes.txt",
+    "chapter_count": 5,
+    "verse_count": 89,
+    "raw_bytes": 11916,
+    "raw_sha256": "77e11fdedbf42b0c1417f043a7feb5a7f039b0bcd9b3d92f09157a93a2459b30"
+  },
+  {
+    "ordinal": 53,
+    "id": "2TH",
+    "title": "2 Tessalonicenses",
+    "source_file": "2tes.txt",
+    "chapter_count": 3,
+    "verse_count": 47,
+    "raw_bytes": 6442,
+    "raw_sha256": "aa15f11743e468844fa861f84c56c8f924742b5e472161d42c8461fa9f368d73"
+  },
+  {
+    "ordinal": 54,
+    "id": "1TI",
+    "title": "1 Timóteo",
+    "source_file": "1tim.txt",
+    "chapter_count": 6,
+    "verse_count": 113,
+    "raw_bytes": 14940,
+    "raw_sha256": "d74384ec9845d1ed37bece22293311db54f7ea44a8a9b806d1737761a3d16f58"
+  },
+  {
+    "ordinal": 55,
+    "id": "2TI",
+    "title": "2 Timóteo",
+    "source_file": "2tim.txt",
+    "chapter_count": 4,
+    "verse_count": 83,
+    "raw_bytes": 10640,
+    "raw_sha256": "358be5ab126055b1b3a66d619f0b075b012e5dc1a08f95b271abd72e9b4afc8b"
+  },
+  {
+    "ordinal": 56,
+    "id": "TIT",
+    "title": "Tito",
+    "source_file": "tito.txt",
+    "chapter_count": 3,
+    "verse_count": 46,
+    "raw_bytes": 6474,
+    "raw_sha256": "a596b400fa06507573af368b0045e1f2131975c2f6266dc2b4732b6ba0a7de2e"
+  },
+  {
+    "ordinal": 57,
+    "id": "PHM",
+    "title": "Filemom",
+    "source_file": "flm.txt",
+    "chapter_count": 1,
+    "verse_count": 25,
+    "raw_bytes": 2998,
+    "raw_sha256": "b0c00b9f71833c53708976dd0bc1f5bf278e2d078bc6ff9173090ca46f501fba"
+  },
+  {
+    "ordinal": 58,
+    "id": "HEB",
+    "title": "Hebreus",
+    "source_file": "heb.txt",
+    "chapter_count": 13,
+    "verse_count": 303,
+    "raw_bytes": 47778,
+    "raw_sha256": "1ee29062e6f278e2c0726cca16c84f127b6bb91d0ce2730f0e8414108a89c994"
+  },
+  {
+    "ordinal": 59,
+    "id": "JAS",
+    "title": "Tiago",
+    "source_file": "tiag.txt",
+    "chapter_count": 5,
+    "verse_count": 108,
+    "raw_bytes": 13852,
+    "raw_sha256": "77ea4560637b23a58df0095fb55d4003d6dc5f014342c45dce621518bab1cd96"
+  },
+  {
+    "ordinal": 60,
+    "id": "1PE",
+    "title": "1 Pedro",
+    "source_file": "1ped.txt",
+    "chapter_count": 5,
+    "verse_count": 105,
+    "raw_bytes": 17255,
+    "raw_sha256": "b6ac4d7e4b3d9632fc50bae8a27b5c78e6682208954a3b9fb47f39f013dda149"
+  },
+  {
+    "ordinal": 61,
+    "id": "2PE",
+    "title": "2 Pedro",
+    "source_file": "2ped.txt",
+    "chapter_count": 3,
+    "verse_count": 61,
+    "raw_bytes": 9676,
+    "raw_sha256": "462e66f13c58074751a0bd032161dd655735c12543f5a6ade239504c107424e2"
+  },
+  {
+    "ordinal": 62,
+    "id": "1JN",
+    "title": "1 João",
+    "source_file": "1joao.txt",
+    "chapter_count": 5,
+    "verse_count": 105,
+    "raw_bytes": 13284,
+    "raw_sha256": "2702817c864cea39f89b5a9261f2bd2e382bfd5080e4c24eba64e8859c9da47d"
+  },
+  {
+    "ordinal": 63,
+    "id": "2JN",
+    "title": "2 João",
+    "source_file": "2joao.txt",
+    "chapter_count": 1,
+    "verse_count": 13,
+    "raw_bytes": 1832,
+    "raw_sha256": "aab1161f4f56f41f28039e185f772b17630cdd508fa938b5db745caf33843fd2"
+  },
+  {
+    "ordinal": 64,
+    "id": "3JN",
+    "title": "3 João",
+    "source_file": "3joao.txt",
+    "chapter_count": 1,
+    "verse_count": 14,
+    "raw_bytes": 2011,
+    "raw_sha256": "1fbd60935b893af46bd96412e1c35c313dcdb10dcc9bdb53d27ce254e16b4867"
+  },
+  {
+    "ordinal": 65,
+    "id": "JUD",
+    "title": "Judas",
+    "source_file": "jud.txt",
+    "chapter_count": 1,
+    "verse_count": 25,
+    "raw_bytes": 4156,
+    "raw_sha256": "1cf16f279a28de517e7af88f1faa693dfd48be1a2c4c2d451b703f0da6533089"
+  },
+  {
+    "ordinal": 66,
+    "id": "REV",
+    "title": "Apocalipse",
+    "source_file": "apo.txt",
+    "chapter_count": 22,
+    "verse_count": 404,
+    "raw_bytes": 65522,
+    "raw_sha256": "73f0a1fb052ce575e337b429d847016b2742be5b7bbb9d4d294d6966aef6f937"
+  }
+]

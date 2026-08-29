@@ -30,3 +30,12 @@ docs/superpowers
 # Mixed
 *.log
 tmp
+
+# Android generated and machine-local artifacts
+android/.gradle/
+android/.kotlin/
+android/local.properties
+android/**/build/
+android/app/src/main/jniLibs/**/*.so
+*.apk
+*.aab

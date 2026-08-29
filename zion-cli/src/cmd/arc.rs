@@ -372,14 +372,30 @@ fn run_open(args: OpenArgs) -> Result<()> {
     let content = Zeroizing::new(opened.content);
     write_private_new(&args.output, content.as_slice())?;
     eprintln!(
-        "opened: {} ({} bytes, profile={}, collection_id={}, capsule_id={})",
-        args.output.display(),
-        content.len(),
-        profile_name(opened.profile),
-        hex::encode(opened.collection_id),
-        hex::encode(opened.capsule_id),
+        "{}",
+        format_open_success(
+            &args.output,
+            opened.profile,
+            opened.collection_id,
+            opened.capsule_id,
+        )
     );
     Ok(())
+}
+
+fn format_open_success(
+    output: &Path,
+    profile: EccProfile,
+    collection_id: [u8; 16],
+    capsule_id: [u8; 16],
+) -> String {
+    format!(
+        "opened: {} (profile={}, collection_id={}, capsule_id={})",
+        output.display(),
+        profile_name(profile),
+        hex::encode(collection_id),
+        hex::encode(capsule_id),
+    )
 }
 
 fn run_corrupt_fixture(args: CorruptFixtureArgs) -> Result<()> {
@@ -1115,6 +1131,26 @@ mod tests {
             hex::encode(Sha256::digest(BLIVRE_ATTRIBUTION.as_bytes())),
             "459e4e5585e1ee8692f07aa947fe08b200f5e40afc09e46961fda42c5d5d070d"
         );
+    }
+
+    #[test]
+    fn open_success_diagnostic_omits_plaintext_byte_length() {
+        let diagnostic = format_open_success(
+            Path::new("/tmp/recovered-book.json"),
+            EccProfile::Safe,
+            [0x11; 16],
+            [0x22; 16],
+        );
+        assert_eq!(
+            diagnostic,
+            concat!(
+                "opened: /tmp/recovered-book.json (profile=safe, ",
+                "collection_id=11111111111111111111111111111111, ",
+                "capsule_id=22222222222222222222222222222222)"
+            )
+        );
+        assert!(!diagnostic.contains("bytes"));
+        assert!(!diagnostic.contains("content"));
     }
 
     #[test]

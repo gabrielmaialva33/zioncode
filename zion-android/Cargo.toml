@@ -1,0 +1,21 @@
+[package]
+name = "zion-android"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+zion-arc = { path = "../zion-arc" }
+zion-corpus = { path = "../zion-corpus" }
+jni = "=0.22.4"
+serde_json.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+zion-stego = { path = "../zion-stego" }

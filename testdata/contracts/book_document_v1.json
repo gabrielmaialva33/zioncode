@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "id": "TST",
+  "ordinal": 7,
+  "title": "Guia de Horta",
+  "language": "pt-BR",
+  "headers": [
+    { "marker": "id", "text": "TST" },
+    { "marker": "ide", "text": "UTF-8" },
+    { "marker": "h", "text": "Guia de Horta" },
+    { "marker": "toc1", "text": "Guia de Horta" },
+    { "marker": "toc2", "text": "Guia de Horta" },
+    { "marker": "toc3", "text": "TST" },
+    { "marker": "mt", "text": "Guia de Horta" }
+  ],
+  "chapters": [
+    {
+      "number": 1,
+      "markers": [
+        { "marker": "p" },
+        { "marker": "d", "text": "Preparação" },
+        { "marker": "v", "number": 1, "text": "Prepare o vaso." },
+        { "marker": "add", "text": "com cuidado" },
+        { "marker": "add*" },
+        { "marker": "v", "number": 2, "text": "Registre o resultado." }
+      ]
+    },
+    {
+      "number": 2,
+      "markers": [
+        { "marker": "d", "text": "Revisão" },
+        { "marker": "p" },
+        { "marker": "v", "number": 1, "text": "Observe o crescimento." },
+        { "marker": "rq", "text": "consulte a ficha" },
+        { "marker": "rq*" }
+      ]
+    }
+  ],
+  "raw_usfm": "\ufeff\\id TST\r\n\\ide UTF-8\r\n\\h Guia de Horta\r\n\\toc1 Guia de Horta\r\n\\toc2 Guia de Horta\r\n\\toc3 TST\r\n\\mt Guia de Horta\r\n\\c 1\r\n\\p\r\n\\d Preparação\r\n\\v 1 Prepare o vaso.\\add com cuidado\\add*\r\n\\v 2 Registre o resultado.\r\n\\c 2\r\n\\d Revisão\r\n\\p\r\n\\v 1 Observe o crescimento.\\rq consulte a ficha\\rq*\r\n",
+  "source": {
+    "name": "Coleção Sintética",
+    "version": "2026.08-contract",
+    "version_date": "2026-08",
+    "release_url": "https://example.invalid/zion-contract/release",
+    "asset_url": "https://example.invalid/zion-contract/asset",
+    "tag_commit": "synthetic-contract-v1",
+    "license": "CC0-1.0 test fixture",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "authors": ["Zion ARC contract tests"]
+  },
+  "normalization": "Synthetic cross-language contract fixture with ordered markers and byte-exact raw USFM."
+}

@@ -1829,6 +1829,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "zion-art"
+version = "0.0.1"
+dependencies = [
+ "blake3",
+ "thiserror",
+ "zion-stego",
+]
+
+[[package]]
 name = "zion-cli"
 version = "0.0.1"
 dependencies = [
@@ -1843,6 +1852,7 @@ dependencies = [
  "uuid",
  "zeroize",
  "zion-arc",
+ "zion-art",
  "zion-codec",
  "zion-corpus",
  "zion-optical",

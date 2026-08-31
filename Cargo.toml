@@ -5,6 +5,7 @@ members = [
     "zion-stego",
     "zion-optical",
     "zion-arc",
+    "zion-art",
     "zion-corpus",
     "zion-android",
 ]

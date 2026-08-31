@@ -1,4 +1,5 @@
 pub mod arc;
+pub mod art_render;
 pub mod decode;
 pub mod encode;
 pub mod inspect;

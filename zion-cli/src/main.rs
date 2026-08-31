@@ -14,6 +14,8 @@ struct Cli {
 enum Command {
     /// Seal, open, and package Zion ARC exact-PNG capsules.
     Arc(cmd::arc::Args),
+    /// Compile UTF-8 content into deterministic generative art.
+    ArtRender(cmd::art_render::Args),
     /// Encode a file into `.zbin` symbols.
     Encode(cmd::encode::Args),
     /// Decode `.zbin` symbols back into a file.
@@ -38,6 +40,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Command::Arc(args) => cmd::arc::run(args),
+        Command::ArtRender(args) => cmd::art_render::run(args),
         Command::Encode(args) => cmd::encode::run(args),
         Command::Decode(args) => cmd::decode::run(args),
         Command::Inspect(args) => cmd::inspect::run(args),

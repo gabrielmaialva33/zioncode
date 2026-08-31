@@ -14,6 +14,7 @@ zion-codec = { path = "../zion-codec" }
 zion-stego = { path = "../zion-stego" }
 zion-optical = { path = "../zion-optical" }
 zion-arc = { path = "../zion-arc" }
+zion-art = { path = "../zion-art" }
 zion-corpus = { path = "../zion-corpus" }
 clap.workspace = true
 anyhow.workspace = true

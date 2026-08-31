@@ -52,9 +52,10 @@ Do not claim invisibility, steganalysis resistance, a novel cipher, or an audit.
 
 ### 1:20–2:10 — Open Psalms offline
 
-With airplane mode visible, launch Zion ARC, select the original Psalms PNG via
-the document picker, enter the passphrase, and open it. Scroll across two
-chapters, then open About/Licenses and show the BLIVRE attribution. Say:
+With airplane mode visible, launch Zion ARC. Approve the image-access prompt;
+its one-shot document picker then opens immediately. Select the original Psalms
+PNG, enter the passphrase, and open it. Scroll across two chapters, then open
+About/Licenses and show the BLIVRE attribution. Say:
 
 > The app requests no internet permission. It passes original PNG bytes through
 > one bounded JNI call to the Rust core, authenticates before releasing content,

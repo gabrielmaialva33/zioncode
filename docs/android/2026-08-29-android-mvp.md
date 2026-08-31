@@ -7,17 +7,22 @@ and unsigned release APK pass. No physical Android device or emulator was
 available for this run, so device behavior and performance remain explicitly
 pending.
 
-This MVP opens one original ARC PNG, authenticates and recovers one normalized
-book through the existing Rust implementation, renders its chapters and marker
-stream in a Portuguese Compose UI, and exports the recovered `raw_usfm`. It does
-not embed a Bible corpus, a carrier, a passphrase, or a generated capsule.
+This MVP requests image access and then opens the system document picker once
+on initial launch. It accepts one original ARC PNG, authenticates and recovers
+one normalized book through the existing Rust implementation, renders its
+chapters and marker stream in a Portuguese Compose UI, and exports the recovered
+`raw_usfm`. The dark
+cyan-and-gold visual system presents the import as a two-step offline flow and
+makes the selected-file privacy boundary explicit. The app does not embed a
+Bible corpus, a carrier, a passphrase, or a generated capsule.
 
 ## Architecture
 
 The byte path is intentionally narrow:
 
 ```text
-OpenDocument("image/png")
+RequestMultiplePermissions(version-appropriate image access)
+  -> OpenDocument("image/png")
   -> ContentResolver InputStream (closed with `use`)
   -> bounded original PNG ByteArray (maximum 128 MiB, with a one-byte probe)
   -> Dispatchers.Default
@@ -165,8 +170,11 @@ uses Gradle's local debug signing and is the installable hackathon artifact.
 2. Transfer the original `.arc.png` file to the phone. Do not send a screenshot,
    JPEG conversion, resized copy, social-media rendition, print, or camera photo.
 3. Install the debug APK on an arm64 Android 8.0+ device.
-4. Tap **Selecionar arte PNG**. The system document picker is filtered to the
-   single MIME type `image/png` and grants access only to the selected URI.
+4. Launch Zion ARC. On the first activity launch, approve the system image
+   permission prompt. The document picker then opens automatically, is filtered
+   to the single MIME type `image/png`, and grants access to the selected URI.
+   If either prompt is denied or cancelled, the flow does not loop; tap
+   **Escolher arte PNG** to use the document-picker fallback.
 5. Enter the passphrase and tap **Abrir offline**. The password field is cleared
    as soon as the attempt begins.
 6. Read the title, source, chapters, verses, and preserved marker records in the
@@ -178,8 +186,11 @@ uses Gradle's local debug signing and is the installable hackathon artifact.
 8. Open **Sobre** to show the exact BLIVRE authors, version, attribution, license
    links, ARC limits, and privacy caveats.
 
-The app requests no broad storage permission. A document provider selected in
-the system picker may itself be backed by a cloud service; that provider is
+The app requests `READ_EXTERNAL_STORAGE` through Android 12,
+`READ_MEDIA_IMAGES` on Android 13, and both `READ_MEDIA_IMAGES` and
+`READ_MEDIA_VISUAL_USER_SELECTED` on Android 14+. A denial does not block the
+system document-picker fallback, which grants URI access to the chosen PNG.
+A document provider may itself be backed by a cloud service; that provider is
 outside the app's process and permission set. Likewise, tapping an attribution
 link delegates the URL to another installed app. Zion ARC itself has no
 `INTERNET` permission.
@@ -230,7 +241,7 @@ link delegates the URL to another installed app. Zion ARC itself has no
 The complete format threat model and limits remain normative in
 [`docs/specs/2026-08-29-zion-arc-v1.md`](../specs/2026-08-29-zion-arc-v1.md).
 
-## Host validation record
+## Original host validation record
 
 All results below were measured on 2026-08-29 from the current dirty seven-crate
 workspace without removing or overwriting unrelated source work. The two Android
@@ -316,7 +327,7 @@ variant, message, and JNI code: `RecoveryFailed`, `capsule recovery failed`, and
 plus one before JNI copying; a separate test covers every document string cleared
 by the native zeroizer.
 
-## Final artifact inspection
+## Original artifact inspection (before the 2026-08-30 UI refresh)
 
 | Artifact | Run 1 bytes / SHA-256 | Run 2 bytes / SHA-256 |
 |---|---|---|
@@ -369,6 +380,71 @@ profiles.
 `git check-ignore` confirms the `.so` and both APKs are ignored, and a complete
 untracked-file check found no APK, shared object, passphrase, corpus archive,
 opened plaintext, or generated ARC image eligible for commit.
+
+## Permissionless UI refresh validation (superseded by 0.0.2)
+
+On 2026-08-30, version 0.0.1's automatic one-shot picker and redesigned Compose interface
+were built twice from separate fresh Cargo target directories. Both Gradle runs
+were offline, disabled build and configuration caches, reran all tasks, and
+finished with `96/96` tasks executed in 26 seconds. Each run passed ten JVM
+tests with zero failures or skips, strict dependency verification, lint with
+warnings as errors, R8, debug assembly, and unsigned release assembly. The two
+new JVM tests prove that a fresh launch requests the picker and that cancellation
+or selection cannot cause a relaunch loop.
+
+| Artifact | Run 1 bytes / SHA-256 | Run 2 bytes / SHA-256 |
+|---|---|---|
+| debug APK | 12,823,571 / `890508d41117b0308289f4d05fbe5c8dbe5ca1913fa791c4988e5fcab76c1722` | 12,823,571 / `890508d41117b0308289f4d05fbe5c8dbe5ca1913fa791c4988e5fcab76c1722` |
+| unsigned release APK | 2,215,794 / `ff31c231c06b3dbba47a821e6cba0e34c1ef3fef609a66d3798f7c028f3af49b` | 2,215,794 / `ff31c231c06b3dbba47a821e6cba0e34c1ef3fef609a66d3798f7c028f3af49b` |
+
+`apkanalyzer` still reports application ID `org.zioncode.app`, minimum SDK 26,
+target SDK 36, and no Android platform permissions. The only merged-manifest
+permission is AndroidX's app-scoped
+`org.zioncode.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. The release APK
+contains no corpus, Bible/BLIVRE file, USFM, passphrase, carrier, or ARC PNG.
+There was no connected ADB device, so the device-validation limits below still
+apply.
+
+## Explicit image-permission follow-up (0.0.2)
+
+Version 0.0.2 (`versionCode = 2`) adds the explicit, version-aware runtime
+permission step requested for the phone demo. The launch sequence is now system
+permission dialog, then the one-shot `OpenDocument("image/png")` picker. Android
+14+ can offer selected-photo access; denial still falls back safely to the
+document picker. The routing unit test covers API 32, 33, and 34 permission
+sets, bringing the Android JVM suite to eleven passing tests.
+
+`./scripts/build-android.sh` passed the Rust arm64 build, all JVM tests, lint
+with warnings as errors, debug assembly, R8, and unsigned release assembly.
+`apkanalyzer` reports version code 2 and these packaged permissions:
+
+```text
+android.permission.READ_EXTERNAL_STORAGE (maxSdkVersion 32)
+android.permission.READ_MEDIA_IMAGES
+android.permission.READ_MEDIA_VISUAL_USER_SELECTED
+org.zioncode.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+```
+
+The 0.0.2 debug APK was 12,914,424 bytes with SHA-256
+`af031410822304466afa3e859e72ddeafad41f98842ffe2c22eed7a2cbaaac8f`.
+No `INTERNET` permission is present.
+
+## Hackathon visual refinement (0.0.3)
+
+Version 0.0.3 (`versionCode = 3`) adds a code-native animated optical hero,
+live access/art/key journey states, compact offline/Rust/RGB8 trust signals,
+and a selected-PNG card populated from bounded provider metadata without
+decoding or re-encoding the image. The authenticated reader header now includes
+a book seal plus derived chapter and verse counts. The original PNG still
+enters the Rust path as the exact `ContentResolver` byte stream.
+
+`./scripts/build-android.sh` passed the Rust arm64 build, twelve JVM tests, lint
+with warnings as errors, debug assembly, R8, and unsigned release assembly. The
+new metadata-size test covers byte, KiB, MiB, and unknown-size presentation.
+The final 0.0.3 debug APK is 14,075,823 bytes with SHA-256
+`bd0a9692ba5dc87a0d43474562a7deb61e71e895541098fbfa92b999e81b5433`.
+The experimental screenshot laboratory is compiled only for host targets and
+is not present in this Android artifact.
 
 ## Pending device validation
 

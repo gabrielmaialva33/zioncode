@@ -16,8 +16,8 @@
   <img alt="Status" src="https://img.shields.io/badge/Status-ARC%20hackathon%20MVP-10B981?style=for-the-badge">
 </p>
 
-`zioncode` is a seven-crate Rust workspace plus a native Android MVP. It keeps
-four transport concerns distinct:
+`zioncode` is an eight-crate Rust workspace plus a native Android MVP. It keeps
+four transport concerns distinct and adds one experimental visual compiler:
 
 - `ZION` codec v1: resilient `.zbin` symbols with compression, ECC, and
   integrity;
@@ -25,7 +25,9 @@ four transport concerns distinct:
   compatibility;
 - Zion Optical v1: an exact RGB PNG container for codec output; and
 - `ZARC` / Zion ARC v1: one compressed, authenticated, ECC-protected item in
-  one exact RGB8 PNG artwork.
+  one exact RGB8 PNG artwork; and
+- Zion Art grammar v0: deterministic content-derived generative art, kept
+  separate from all stable transport formats.
 
 ARC is a new transport protocol, not a new cipher. It composes Argon2id,
 BLAKE3, XChaCha20-Poly1305, zstd, Reed–Solomon, interleaving, and keyed LSB
@@ -72,9 +74,10 @@ Full evidence: [carrier-art report](docs/results/2026-08-29-carrier-art.md) and
 | [`zion-stego/`](zion-stego/) | Frozen `ZSTG` photo-stego format and exact RGB PNG I/O used by existing integrations |
 | [`zion-optical/`](zion-optical/) | One-image lossless RGB container for codec symbols |
 | [`zion-arc/`](zion-arc/) | ARC v1 exact-PNG core, bounded parsers, KDF/AEAD/ECC/carrier pipeline, capacity API, and frozen vector |
+| [`zion-art/`](zion-art/) | Experimental information-to-art compiler: versioned semantic profile, content genome, and deterministic integer renderer |
 | [`zion-corpus/`](zion-corpus/) | Pinned, bounded BLIVRE 2018.2.0 verifier/importer and canonical book model |
 | [`zion-android/`](zion-android/) | Narrow byte-oriented Rust/JNI bridge for one authenticated ARC book |
-| [`zion-cli/`](zion-cli/) | `zion` command tree for all four transports and corpus tooling |
+| [`zion-cli/`](zion-cli/) | `zion` command tree for all four transports, art compilation, and corpus tooling |
 | [`android/`](android/) | Kotlin/Jetpack Compose single-book reader using Android's document picker |
 | [`fuzz/`](fuzz/) | Separate cargo-fuzz workspace for existing codec, stego, and optical attacker-facing parsers |
 | [`scripts/`](scripts/) | Android setup/build and reproducible carrier-art demo workflows |
@@ -245,9 +248,47 @@ or import rules.
 The normative contract is the
 [ARC v1 specification and threat model](docs/specs/2026-08-29-zion-arc-v1.md).
 
+## Experimental information-to-art compiler
+
+`zion-art` starts a different direction: the content hash, textual cadence,
+and a model-independent eight-axis semantic profile compile into a deterministic
+visual genome. The current integer-only renderer produces exact reproducible
+RGB art; it deliberately does not claim that semantic appearance can recover
+the source bytes.
+
+```bash
+cargo run -p zion-cli -- art-render README.md \
+  --output zion-art.png \
+  --warmth -420 \
+  --motion 680 \
+  --transcendence 760 \
+  --radiance 420
+```
+
+The long-term design combines this macro artwork with a small robust
+localization beacon and a separately authenticated high-capacity channel. See
+the [grammar v0 specification](docs/specs/2026-08-30-zion-art-v0.md) and the
+[primary-source algorithm review](docs/research/2026-08-30-zion-art-algorithm-review.md).
+
+The current deterministic reference render is
+[available here](docs/results/assets/zion-art-v0-readme.png). It establishes a
+reproducible baseline; the next grammar replaces generic value-noise texture
+with content-driven reaction-diffusion, flow, and growth structures.
+
+## Experimental screenshot laboratory
+
+`zion_arc::screen_lab` is a separate, unstable host prototype for exact-size
+lossless Android screenshots. It does not change ARC v1. Its 1080×2340 test fits
+the measured 141,844-byte Psalms bootstrap-plus-RS frame in a 157,806-byte 2×2
+differential carrier, passes a deterministic compositor transform, and lets the
+existing outer Reed–Solomon layer repair deliberately introduced symbol errors.
+Crop, resize, real-device capture, and Android integration remain pending; see
+the [measured screen-lab result](docs/results/2026-08-30-screen-lab.md).
+
 ## Android MVP
 
 The Compose application imports one original PNG through
+an Android-version-aware image permission request followed by
 `OpenDocument("image/png")`, performs bounded stream I/O, passes bytes—not a
 decoded `Bitmap`—through one JNI method, and opens one book off the UI thread.
 The Rust bridge structurally validates and canonically reserializes the

@@ -14,6 +14,8 @@ mod ecc;
 mod envelope;
 mod error;
 mod kdf;
+#[cfg(not(target_os = "android"))]
+pub mod screen_lab;
 mod types;
 #[allow(unsafe_code)]
 mod zstd_ffi;

@@ -2,16 +2,53 @@ package org.zioncode.app
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.provider.OpenableColumns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.util.Locale
 
 internal const val MAX_ARC_PNG_BYTES: Int = 134_217_728
 internal const val MAX_ARC_PASSPHRASE_BYTES: Int = 1_024
 
+internal data class SelectedDocumentInfo(
+    val displayName: String,
+    val sizeBytes: Long?,
+)
+
 internal class ArcRepository(private val resolver: ContentResolver) {
+    suspend fun describe(uri: Uri): SelectedDocumentInfo = withContext(Dispatchers.IO) {
+        runCatching {
+            resolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                val displayName = if (nameIndex >= 0 && !cursor.isNull(nameIndex)) {
+                    cursor.getString(nameIndex).take(120)
+                } else {
+                    null
+                }
+                val sizeBytes = if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) {
+                    cursor.getLong(sizeIndex).takeIf { it >= 0 }
+                } else {
+                    null
+                }
+                SelectedDocumentInfo(
+                    displayName = displayName.orEmpty().ifBlank { "Arte PNG selecionada" },
+                    sizeBytes = sizeBytes,
+                )
+            }
+        }.getOrNull() ?: SelectedDocumentInfo("Arte PNG selecionada", null)
+    }
+
     suspend fun decode(uri: Uri, passphraseBytes: ByteArray): BookUiModel {
         var pngBytes: ByteArray? = null
         var jsonBytes: ByteArray? = null
@@ -46,6 +83,13 @@ internal class ArcRepository(private val resolver: ContentResolver) {
             bytes.fill(0)
         }
     }
+}
+
+internal fun formatDocumentSize(sizeBytes: Long?): String = when {
+    sizeBytes == null -> "Tamanho não informado"
+    sizeBytes >= 1_048_576 -> String.format(Locale.ROOT, "%.1f MB", sizeBytes / 1_048_576.0)
+    sizeBytes >= 1_024 -> String.format(Locale.ROOT, "%.1f KB", sizeBytes / 1_024.0)
+    else -> "$sizeBytes bytes"
 }
 
 internal fun isPassphraseInputWithinLimit(value: String): Boolean {

@@ -1,6 +1,7 @@
 package org.zioncode.app
 
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -47,5 +48,13 @@ class BoundedInputTest {
         }
 
         assertArrayEquals(expected, readBounded(oneByteAtATime, expected.size))
+    }
+
+    @Test
+    fun documentSizesUseCompactStableUnits() {
+        assertEquals("Tamanho não informado", formatDocumentSize(null))
+        assertEquals("900 bytes", formatDocumentSize(900))
+        assertEquals("1.5 KB", formatDocumentSize(1_536))
+        assertEquals("5.0 MB", formatDocumentSize(5_242_880))
     }
 }
